@@ -1,0 +1,257 @@
+﻿@charset "UTF-8";
+
+/* 페이지 배경과 여백 */
+.work-create-page {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: calc(100vh - 128px);
+    padding: 56px 24px;
+    background: #FCFBF8;
+}
+
+/* 입력 카드 */
+.work-create-card {
+    width: 100%;
+    max-width: 560px;
+    padding: 36px;
+    border: 1px solid #E8E2D9;
+    border-radius: 20px;
+    background: #FFFFFF;
+    box-shadow: 0 6px 24px rgba(89, 67, 49, 0.05);
+    color: #594331;
+}
+
+/* 제목 */
+.work-create-heading {
+    margin-bottom: 32px;
+}
+
+.work-create-heading h1 {
+    margin: 0 0 12px;
+    color: #594331;
+    font-family: inherit;
+    font-size: 26px;
+    font-weight: 700;
+}
+
+.work-create-heading p {
+    margin: 0;
+    color: #786B5E;
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+/* 입력 항목 */
+.work-create-form {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.work-create-form .form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.work-create-form label {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.work-create-form input,
+.work-create-form textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid #DED5C9;
+    border-radius: 10px;
+    background: #FFFEFC;
+    color: #594331;
+    font: inherit;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.work-create-form textarea {
+    height: 170px;
+    min-height: 170px;
+    max-height: 170px;
+    overflow-y: auto;
+    resize: none;
+    box-sizing: border-box;
+}
+
+.work-create-form input::placeholder,
+.work-create-form textarea::placeholder {
+    color: #8A8075;
+}
+
+.work-create-form input:focus,
+.work-create-form textarea:focus {
+    outline: 2px solid #71865B;
+    outline-offset: 2px;
+    border-color: #71865B;
+}
+
+/* 하단 버튼 */
+.work-create-actions {
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding-top: 8px;
+}
+
+.work-create-actions .work-cancel,
+.work-create-actions .work-submit {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 44px;
+    padding: 10px 20px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.work-create-actions .work-cancel {
+    border-color: #E8E2D9;
+    background: #F7F3EE;
+    color: #786B5E;
+}
+
+.work-create-actions .work-cancel:hover {
+    background: #EFE8DE;
+}
+
+.work-create-actions .work-submit {
+    border-color: #D4DFC8;
+    background: #E8F0DE;
+    color: #465B38;
+}
+
+.work-create-actions .work-submit:hover {
+    background: #DCE8CE;
+}
+
+.work-create-actions a:focus-visible,
+.work-create-actions button:focus-visible {
+    outline: 2px solid #71865B;
+    outline-offset: 3px;
+}
+
+/* 원형 배경 효과를 담는 영역 */
+.work-create-page {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+}
+
+/* 흐릿한 원 두 개 */
+.work-create-page::before,
+.work-create-page::after {
+    content: "";
+    position: absolute;
+    width: clamp(190px, 30vw, 390px);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    filter: blur(30px);
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* 왼쪽 위 브라운 원 */
+.work-create-page::before {
+    top: -80px;
+    left: -70px;
+    background: rgba(166, 124, 91, 0.34);
+    animation: work-create-brown 8s ease-in-out -4s infinite alternate;
+}
+
+/* 오른쪽 아래 연두색 원 */
+.work-create-page::after {
+    right: -70px;
+    bottom: -100px;
+    background: rgba(172, 202, 137, 0.44);
+    animation: work-create-green 8s ease-in-out -5s infinite alternate;
+}
+
+/* 입력 카드는 배경 위에 표시 */
+.work-create-card {
+    position: relative;
+    z-index: 1;
+}
+
+@keyframes work-create-brown {
+    from {
+        transform: translate(0, 0) scale(1);
+    }
+    to {
+        transform: translate(160px, 130px) scale(1.15);
+    }
+}
+
+@keyframes work-create-green {
+    from {
+        transform: translate(0, 0) scale(1);
+    }
+    to {
+        transform: translate(-170px, -120px) scale(1.12);
+    }
+}
+
+
+/* 입력칸 아래 오류 메시지 */
+.field-error {
+    color: #dc3545;
+    font-size: 12px;
+    line-height: 18px;
+
+    min-height: 20px;
+    margin: 0;
+}
+
+/* 오류가 없어도 공간은 유지 */
+.field-error:empty {
+    visibility: hidden;
+}
+
+/* 서버 전체 오류 메시지 */
+.form-error {
+    color: #dc3545;
+    font-size: 13px;
+    margin-bottom: 15px;
+}
+
+
+.form-error {
+    margin-bottom: 15px;
+}
+
+.work-create-form input[aria-invalid="true"],
+.work-create-form textarea[aria-invalid="true"] {
+    border-color: #dc3545;
+}
+
+/* 공개 / 비공개 라디오 버튼 */
+.work-create-form input[type="radio"] {
+    width: auto;
+    height: auto;
+    padding: 0;
+    margin: 0;
+    accent-color: #71865B;
+}
+
+/* 라디오 버튼과 글자를 나란히 배치 */
+.work-create-form .radio-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: fit-content;
+    cursor: pointer;
+}

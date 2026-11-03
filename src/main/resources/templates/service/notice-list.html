@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/layout3}">
+<head><title>공지사항 | TASKWAKA</title></head>
+<th:block layout:fragment="css">
+    <link rel="stylesheet" th:href="@{/dist/css/site-notice.css}">
+</th:block>
+<th:block layout:fragment="content">
+    <div class="site-notice-wrap">
+        <div class="site-notice-intro">
+            <span class="site-notice-eyebrow">TASKWAKA SUPPORT</span>
+            <h1>공지사항</h1>
+            <p>TASKWAKA 서비스의 새로운 소식과 주요 안내를 확인하세요.</p>
+        </div>
+        <form th:action="@{/service/notice}" method="get" class="site-notice-search">
+		    <input type="text" name="keyword" th:value="${keyword}" placeholder="공지사항 제목 검색">
+		    <button type="submit">검색</button>
+		</form>
+
+        <section class="site-notice-board" aria-label="공지사항 목록">
+            <div class="site-notice-board-head">
+                <h2>전체 공지</h2>
+                <span class="site-notice-count" th:text="'총 ' + ${dataCount} + '건'">총 0건</span>
+            </div>
+            <div class="site-notice-list-header" aria-hidden="true">
+                <span>제목</span>
+                <span>작성자</span>
+                <span>등록일</span>
+            </div>
+            <div class="site-notice-empty" th:if="${noticeList == null or #lists.isEmpty(noticeList)}">
+                <i class="bi bi-inbox" aria-hidden="true"></i>
+                <p>등록된 공지사항이 없습니다.</p>
+            </div>
+            <ul class="site-notice-list" th:if="${noticeList != null and !#lists.isEmpty(noticeList)}">
+                <li th:each="notice : ${noticeList}">
+                    <a class="site-notice-list-link" th:href="@{/service/notice/{id}(id=${notice.notice_id})}">
+                        <span class="site-notice-title">
+						    <span th:text="${notice.title}">공지사항 제목</span>
+						    <span class="site-notice-new" th:if="${notice.is_new == 1}">NEW</span>
+						</span>
+                        <span class="site-notice-author" th:text="${notice.name}">작성자</span>
+                        <time class="site-notice-date" th:datetime="${#dates.format(notice.created, 'yyyy-MM-dd')}" th:text="${#dates.format(notice.created, 'yyyy.MM.dd')}">2026.10.21</time>
+                    </a>
+                </li>
+            </ul>
+                <div class="site-notice-paging" th:if="${paging != null}" th:utext="${paging}"></div>
+        </section>
+        <p class="site-notice-help">서비스 이용 중 궁금한 점이 있다면 고객지원 메뉴를 이용해 주세요.</p>
+    </div>
+</th:block>
+</html>

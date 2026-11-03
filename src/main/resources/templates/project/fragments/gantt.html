@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+	<div th:fragment="content">
+
+		<!-- 간트차트 전용 외부 CSS 연결 -->
+		<link rel="stylesheet" th:href="@{/dist/css/project/gantt.css}">
+
+		<!-- 상위 래퍼 -->
+		<div class="gantt-split-view-wrapper" id="ganttSplitViewWrapper">
+
+			<!-- [상단/본문] 간트차트 메인 페이지 -->
+			<div class="gantt-main-page" id="ganttMainPage">
+
+				<!-- 상단 컨트롤 툴바 -->
+				<div class="gantt-toolbar">
+					<div class="gantt-toolbar-left">
+						<span class="gantt-toolbar-title">📅 프로젝트 일정 간트차트</span>
+						<div class="gantt-legend-group">
+							<span class="legend-item"><i class="dot-main"></i>메인 업무</span>
+							<span class="legend-item"><i class="dot-sub"></i>하위 업무</span>
+							<span class="legend-item"><i class="dot-today"></i>오늘(Today)</span>
+						</div>
+					</div>
+					<div class="gantt-toolbar-right">
+						<button type="button" class="btn-gantt-tool" onclick="scrollToToday()">오늘로 이동</button>
+						<button type="button" class="btn-gantt-tool" onclick="expandAllGanttGroups(true)">전체 펼치기</button>
+						<button type="button" class="btn-gantt-tool" onclick="expandAllGanttGroups(false)">전체 접기</button>
+					</div>
+				</div>
+
+				<!-- 간트차트 보드 (좌측 업무 트리 + 우측 타임라인 그리드) -->
+				<div class="gantt-board-container">
+
+					<!-- [좌측] 업무/하위업무 목록 영역 -->
+					<div class="gantt-left-pane" id="ganttLeftPane">
+						<div class="gantt-left-header">
+							<div class="col-g-name">업무명</div>
+							<div class="col-g-status">상태</div>
+							<div class="col-g-period">일정 기간</div>
+						</div>
+
+						<div class="gantt-left-body" id="ganttLeftBody">
+							<!-- 서버 사이드 Thymeleaf 데이터가 있을 때 렌더링, 없으면 JS에서 기본/API 렌더링 -->
+							<th:block th:if="${tasks != null and !#lists.isEmpty(tasks)}">
+								<th:block th:each="task : ${tasks}">
+									<!-- 메인 업무 행 -->
+									<div class="gantt-tree-row main-row"
+									     th:attr="data-type='task', data-id=${task.taskId}, data-parent-id='', data-start=${task.startAt}, data-end=${task.endAt}, data-progress=${task.progress != null ? task.progress : 0}, data-status=${task.status != null ? task.status : 0}, data-title=${task.title}"
+									     onclick="onGanttItemClick('task', this.getAttribute('data-id'), this)">
+										<div class="col-g-name">
+											<span class="btn-gantt-toggle"
+											      th:if="${task.subTasks != null and !#lists.isEmpty(task.subTasks)}"
+											      onclick="event.stopPropagation(); toggleGanttSubRows(this)">－</span>
+											<span class="btn-gantt-toggle-empty"
+											      th:unless="${task.subTasks != null and !#lists.isEmpty(task.subTasks)}"></span>
+											<span class="gantt-row-title" th:text="${task.title}">메인 업무명</span>
+										</div>
+										<div class="col-g-status">
+											<span class="badge-status"
+													th:classappend="${task.status == 0} ? 'badge-req' : (${task.status == 1} ? 'badge-done' : (${task.status == 2} ? 'badge-feedback' : 'badge-prog'))"
+													th:text="${task.status == 0 ? '● 예정' : (task.status == 1 ? '● 진행' : (task.status == 2 ? '● 검토' : '● 완료'))}">● 예정</span>
+										</div>
+										<div class="col-g-period" th:text="${(task.startAt != null ? task.startAt : '-') + ' ~ ' + (task.endAt != null ? task.endAt : '-')}">2026-10-01 ~ 2026-10-15</div>
+									</div>
+
+									<!-- 하위 업무 행 -->
+									<th:block th:if="${task.subTasks != null}">
+										<div class="gantt-tree-row sub-row"
+										     th:each="sub : ${task.subTasks}"
+										     th:attr="data-type='subtask', data-id=${sub.subTaskId}, data-parent-id=${task.taskId}, data-start=${sub.startAt}, data-end=${sub.endAt}, data-progress=${sub.progress != null ? sub.progress : 0}, data-status=${sub.status != null ? sub.status : 0}, data-title=${sub.title}"
+										     onclick="onGanttItemClick('subtask', this.getAttribute('data-id'), this)">
+											<div class="col-g-name indent-sub">
+												<span class="sub-branch-icon">ㄴ</span>
+												<span class="gantt-row-title" th:text="${sub.title}">하위 업무명</span>
+											</div>
+											<div class="col-g-status">
+												<span class="badge-status"
+													th:classappend="${sub.status == 0} ? 'badge-req' : (${sub.status == 1} ? 'badge-done' : (${sub.status == 2} ? 'badge-feedback' : 'badge-prog'))"
+													th:text="${sub.status == 0 ? '● 예정' : (sub.status == 1 ? '● 진행' : (sub.status == 2 ? '● 검토' : '● 완료'))}">● 예정</span>
+
+											</div>
+											<div class="col-g-period" th:text="${(sub.startAt != null ? sub.startAt : '-') + ' ~ ' + (sub.endAt != null ? sub.endAt : '-')}">2026-10-02 ~ 2026-10-10</div>
+										</div>
+									</th:block>
+								</th:block>
+							</th:block>
+						</div>
+					</div>
+
+					<!-- [우측] 타임라인 차트 영역 -->
+					<div class="gantt-right-pane" id="ganttRightPane">
+						<!-- 상단 월/일자 타임라인 헤더 (JS에서 동적 렌더링) -->
+						<div class="gantt-timeline-header" id="ganttTimelineHeader">
+							<div class="gantt-month-row" id="ganttMonthRow"></div>
+							<div class="gantt-day-row" id="ganttDayRow"></div>
+						</div>
+
+						<!-- 타임라인 바 그리드 본문 (JS에서 동적 렌더링) -->
+						<div class="gantt-timeline-body" id="ganttTimelineBody">
+							<div class="gantt-today-line" id="ganttTodayLine" title="오늘 (Today)"></div>
+							<div class="gantt-bars-container" id="ganttBarsContainer"></div>
+						</div>
+					</div>
+
+				</div>
+			</div>
+
+			<!-- [공통 우측 오버레이] 업무/하위업무 상세 패널 프래그먼트 연결 -->
+			<aside th:replace="~{project/fragments/detail_panel :: detailPanel}"></aside>
+
+		</div>
+
+		<!-- Thymeleaf 전역 변수 바인딩 -->
+		<script th:inline="javascript">
+			/*<![CDATA[*/
+			const currentDomainKey = /*[[${domainKey}]]*/ 'apple';
+			const currentProjectId = /*[[${projectId}]]*/ 1;
+			/*]]>*/
+		</script>
+
+		<!-- 간트차트 전용 외부 JS 연결 -->
+		<script th:src="@{/dist/js/project/gantt.js}"></script>
+	</div>
+</body>
+</html>

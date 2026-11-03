@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/layout3}">
+
+<th:block layout:fragment="css">
+    <link rel="stylesheet" th:href="@{/dist/css/home.css}">
+    <link rel="stylesheet" th:href="@{/dist/css/manage/manage.css}">
+    <link rel="stylesheet" th:href="@{/dist/css/manage/project-list.css}">
+    <link rel="stylesheet" th:href="@{/dist/css/manage/viewWrite.css}">
+	<link rel="stylesheet" th:href="@{/dist/vendor/quill/css/quill.snow.css}">
+</th:block>
+
+<th:block layout:fragment="content">
+    <div class="home-layout manage-layout project-list-layout">
+        
+        <nav th:replace="~{layout/pmSidebar::manageSidebar('projectView')}"></nav>
+        
+        <section class="section project-list-page" aria-labelledby="project-article-heading">
+            <div class="page-heading">
+                <div>
+                    <h1 id="project-article-heading" class="page-title" th:text="${mode == 'write' ? '프로젝트 등록' : '프로젝트 수정'}">프로젝트 등록</h1>
+                    <p class="page-description">새로운 프로젝트의 상세 정보를 입력해 주세요.</p>
+                </div>
+            </div>
+
+            <div class="project-list-panel" style="padding: 30px;">
+				
+                <form id="project-article-form" 
+      method="post" 
+      th:object="${dto}" 
+      th:action="${dto != null and dto.project_id != null} 
+                 ? @{/{domainKey}/manage/detail/{projectId}/update(domainKey=${domainKey}, projectId=${dto.project_id})} 
+                 : @{/{domainKey}/manage/write(domainKey=${domainKey})}">
+                    
+                    <div class="project-form-group">
+                        <label for="subject">프로젝트명 <span style="color:red;">*</span></label>
+                        <!-- th:field="*{subject}" 는 id="subject" name="subject" value="${dto.subject}" 를 자동 생성합니다 -->
+                        <input type="text" id="subject" th:field="*{subject}" class="project-form-control" required placeholder="예: TASKWAKA 프론트엔드 리팩토링">
+                    </div>
+
+                    <div style="display: flex; gap: 20px;">
+                        <div class="project-form-group" style="flex: 1;">
+                            <label for="start_date">시작일 <span style="color:red;">*</span></label>
+                            <input type="date" id="start_date" th:field="*{start_date}" class="project-form-control" required>
+                        </div>
+                        <div class="project-form-group" style="flex: 1;">
+                            <label for="end_date">종료일 <span style="color:red;">*</span></label>
+                            <input type="date" id="end_date" th:field="*{end_date}" class="project-form-control" required>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 20px;">
+                        <div class="project-form-group" style="flex: 1;">
+                            <label for="status">초기 상태</label>
+                            <select id="status" th:field="*{status}" class="project-form-control">
+                                <option value="0">예정</option>
+                                <option value="1">진행 중</option>
+                                <option value="3">보류</option>
+                            </select>
+                        </div>
+                        <div class="project-form-group" style="flex: 1;">
+                            <label for="progress">진행률 (%)</label>
+                            <input type="number" id="progress" th:field="*{progress}" class="project-form-control" value="0" readonly>
+                        </div>
+                    </div>
+
+                    <div class="project-form-group">
+                            <label for="editor">프로젝트 상세 내용</label>
+						    <div id="editor" th:utext="*{content}"></div>
+						    <input type="hidden" id="content" th:field="*{content}">
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="project-button project-button-primary" style="padding: 10px 40px; font-size: 16px;" th:text="${mode == 'write' ? '등록하기' : '수정하기'}">등록하기</button>
+						<button type="button" class="project-button" style="padding: 10px 40px; font-size: 16px;" th:onclick="|location.href='@{/{domainKey}/manage/view(domainKey=${domainKey})}'|">취소</button>
+                    </div>
+
+                </form>
+            </div>
+        </section>
+    </div>
+</th:block>
+
+<th:block layout:fragment="script">
+    <script th:src="@{/dist/vendor/quill/js/quill.js}"></script>
+    <script th:src="@{/dist/vendor/quill/js/resize.js}"></script>
+    <script th:src="@{/dist/posts/qeditor.js}"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const form = document.getElementById('project-article-form');
+            if (!form) {
+                return;
+            }
+
+            const contentInput = document.getElementById('content');
+            const originalContent = quill.root.innerHTML;
+
+            form.addEventListener('submit', function (event) {
+                const htmlViewEL = document.querySelector('textarea#html-view');
+                const htmlContent = htmlViewEL ? htmlViewEL.value : quill.root.innerHTML;
+
+                if (!hasContent(htmlContent)) {
+                    event.preventDefault();
+                    alert('프로젝트 상세 내용을 입력하세요.');
+
+                    if (htmlViewEL) {
+                        htmlViewEL.focus();
+                    } else {
+                        quill.focus();
+                    }
+                    return;
+                }
+
+                contentInput.value = htmlContent;
+            });
+
+            form.addEventListener('reset', function () {
+                setTimeout(function () {
+                    quill.clipboard.dangerouslyPasteHTML(originalContent);
+                }, 0);
+            });
+        });
+    </script>
+</th:block>
+
+</html>

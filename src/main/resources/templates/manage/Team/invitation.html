@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/layout3}">
+
+<th:block layout:fragment="css">
+    <link rel="stylesheet" th:href="@{/dist/css/invitation.css}">
+    <link rel="stylesheet" th:href="@{/dist/css/manage/invitation.css}">
+</th:block>
+
+<th:block layout:fragment="content">
+    <div class="invitation-layout">
+        <div class="team-invitation">
+            <div class="invitation-heading">
+                <h1>팀원 초대하기</h1>
+                <p>함께할 팀원을 검색하고 선택한 후 초대를 발송해주세요.</p>
+            </div>
+
+            <form class="invitation-form" id="invitationForm">
+                
+                <div class="invitation-field">
+                    <label>초대 가능한 팀원 목록</label>
+                    
+                    <div class="search-box">
+                        <input type="text" id="searchInput" placeholder="이름 또는 이메일 검색">
+                        <button type="button" onclick="loadEligibleMembers()">검색</button>
+                    </div>
+
+                    <div class="checkbox-list-container" id="member-list">
+                        <div class="no-data">데이터를 불러오는 중입니다...</div>
+                    </div>
+                </div>
+
+                <label><input id="resendPending" type="checkbox"> 기존 대기 중인 초대도 다시 발송</label>
+                <div class="invitation-actions">
+                    <button type="button" class="invitation-submit" id="btn-invite">
+                        초대하기
+                    </button>
+                    <a href="#" class="invitation-cancel" onclick="window.history.back(); return false;">취소</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</th:block>
+
+<th:block layout:fragment="script">
+    <script th:inline="javascript">
+        const domainKey = /*[[${domainKey}]]*/ 'defaultDomain';
+        document.addEventListener("DOMContentLoaded", function() {
+            loadEligibleMembers();
+            document.getElementById('btn-invite').addEventListener('click', sendInvitations);
+            
+            document.getElementById('searchInput').addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    loadEligibleMembers();
+                }
+            });
+        });
+
+        function loadEligibleMembers() {
+            const listContainer = document.getElementById('member-list');
+            const kwd = document.getElementById("searchInput").value.trim();
+            
+            let requestUrl = `/${domainKey}/manage/invite/eligible-members?schType=all`;
+            if (kwd) {
+                requestUrl += `&kwd=${encodeURIComponent(kwd)}`;
+            }
+
+            fetch(requestUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('목록 조회 실패: 권한이 없거나 서버 에러입니다.');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    listContainer.innerHTML = ''; 
+
+                    if (!data || data.length === 0) {
+                        listContainer.innerHTML = '<div class="no-data">조건에 맞는 팀원이 없습니다.</div>';
+                        return;
+                    }
+
+                    data.forEach(member => {
+                        const item = document.createElement('div');
+                        item.className = 'checkbox-item';
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.id = `member_${member.memberId}`;
+                        checkbox.name = 'memberIds';
+                        checkbox.value = member.memberId;
+                        const label = document.createElement('label');
+                        label.htmlFor = checkbox.id;
+                        label.textContent = `${member.name} (${member.email})`;
+                        item.appendChild(checkbox);
+                        item.appendChild(label);
+                        listContainer.appendChild(item);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    listContainer.innerHTML = '<div class="no-data" style="color:red;">목록을 불러올 수 없습니다.</div>';
+                });
+        }
+        
+        let retryIds = [];
+        function sendInvitations() {
+            const checkedBoxes = document.querySelectorAll('input[name="memberIds"]:checked');
+            const targetMemberIds = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
+
+            if (targetMemberIds.length === 0) {
+                alert('초대할 팀원을 한 명 이상 선택해주세요.');
+                return;
+            }
+
+            const submitBtn = document.getElementById('btn-invite');
+            submitBtn.disabled = true;
+            submitBtn.innerText = '초대 중... 시간이 소요될 수 있습니다.';
+
+            fetch(`/${domainKey}/manage/invite/send`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ memberIds: targetMemberIds, retryIds, resend: document.getElementById("resendPending").checked })
+            })
+            
+			.then(async response => {
+			    if (response.redirected || response.status === 401) {
+			        throw new Error("로그인 후 다시 시도해주세요.");
+			    }
+			
+			    if (!response.ok) throw new Error((await response.text()) || "초대 메일을 발송하지 못했습니다.");
+                return await response.json();
+            })
+            .then(({failedMemberIds}) => {
+                retryIds = failedMemberIds;
+                const failed = new Set(failedMemberIds);
+                checkedBoxes.forEach(box => { box.checked = failed.has(Number(box.value)); });
+                if (failed.size) {
+                    alert(failed.size + '명에게 발송하지 못했습니다. 실패한 대상만 다시 선택했습니다.');
+                } else {
+                    alert('초대 요청을 처리했습니다. 이미 대기 중인 초대는 중복 발송하지 않습니다.');
+                    document.getElementById('searchInput').value = "";
+                    loadEligibleMembers();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('초대 발송 중 오류가 발생했습니다: ' + error.message);
+            })
+            .finally(() => {
+                submitBtn.disabled = false;
+                submitBtn.innerText = '초대하기';
+            });
+        }
+    </script>
+</th:block>
+</html>

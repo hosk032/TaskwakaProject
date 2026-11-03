@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<title>Taskwaka - 관리자 콘솔 (ADMIN)</title>
+
+
+<th:block>
+	<link rel="stylesheet" th:href="@{/dist/css/admin/admin-common.css}">
+	<link rel="stylesheet" th:href="@{/dist/css/admin/admin-user.css}">
+	<link rel="stylesheet" th:href="@{/dist/css/admin/admin-user-detail.css}">
+	<link rel="stylesheet" th:href="@{/dist/css/admin/admin-domain.css}">
+	<link rel="stylesheet" th:href="@{/dist/css/admin/admin-stats.css}">
+    <link rel="stylesheet" th:href="@{/dist/css/admin/admin-notice.css}">	
+	<link rel="stylesheet" th:href="@{/dist/css/admin/admin-responsive.css}">
+	<!-- Quill editor -->
+	<link rel="stylesheet" th:if="${activeSection == 'noticeWrite' or activeSection == 'noticeDetail' or activeSection == 'noticeEdit'}"
+	 	th:href="@{/dist/vendor/quill/css/quill.snow.css}">
+	<link rel="stylesheet" th:if="${activeSection == 'noticeWrite' or activeSection == 'noticeDetail' or activeSection == 'noticeEdit'}"
+	 	th:href="@{/dist/vendor/quill/css/resize.css}">
+</th:block>
+<th:block th:replace="~{layout/header :: headerFooterAssets}"></th:block>
+<link rel="stylesheet" th:href="@{/dist/css/sidebar.css}">
+<!-- Flatpickr 달력 디자인 -->
+<link th:if="${activeSection == 'stats'}" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<!-- Flatpickr 달력 기능 -->
+<script th:if="${activeSection == 'stats'}" src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script th:if="${activeSection == 'stats'}" src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ko.js"></script>
+</head>
+<body>
+
+	<header class="site-header">
+		<th:block th:replace="~{layout/header :: bar('admin', @{/admin}, ~{})}"></th:block>
+	</header>
+
+	<div class="app-frame">
+		<nav class="sidebar tw-sidebar" aria-label="관리자 메뉴">
+		    <div class="tw-nav-groups">
+		        <details class="tw-nav-group" open>
+		            <summary th:replace="~{layout/sidebarUi :: heading('🔐', '계정 및 보안 관리')}"></summary>
+		            <ul class="tw-nav-items">
+		                <li>
+		                    <a th:href="@{/admin(section='user')}"
+		                       th:attr="aria-current=${#strings.startsWith(activeSection, 'user') ? 'page' : null}">
+		                        <th:block th:replace="~{layout/sidebarUi :: label('👤', '전체 회원 관리')}"></th:block>
+		                    </a>
+		                </li>
+		                <li>
+		                    <a th:href="@{/admin/domain}"
+		                       th:attr="aria-current=${activeSection == 'domain' ? 'page' : null}">
+		                        <th:block th:replace="~{layout/sidebarUi :: label('🌐', '도메인 접근 제한')}"></th:block>
+		                    </a>
+		                </li>
+		            </ul>
+		        </details>
+		        <details class="tw-nav-group" open>
+		            <summary th:replace="~{layout/sidebarUi :: heading('💬', '운영 및 고객 지원')}"></summary>
+		            <ul class="tw-nav-items">
+		                <li>
+		                    <a th:href="@{/admin/notice}"
+		                       th:attr="aria-current=${#strings.startsWith(activeSection, 'notice') ? 'page' : null}">
+		                        <th:block th:replace="~{layout/sidebarUi :: label('📣', '전체 공지사항 관리')}"></th:block>
+		                    </a>
+		                </li>
+		                <li>
+		                    <a th:href="@{/admin/inquiry}"
+		                       th:attr="aria-current=${#strings.startsWith(activeSection, 'inquiry') ? 'page' : null}">
+		                        <th:block th:replace="~{layout/sidebarUi :: label('💬', '1:1 고객 문의 관리')}"></th:block>
+		                    </a>
+		                </li>
+		                <li>
+		                    <a th:href="@{/admin/faq}"
+		                       th:attr="aria-current=${#strings.startsWith(activeSection, 'faq') ? 'page' : null}">
+		                        <th:block th:replace="~{layout/sidebarUi :: label('🤖', 'FAQ 관리')}"></th:block>
+		                    </a>
+		                </li>
+		            </ul>
+		        </details>
+		        <details class="tw-nav-group" open>
+		            <summary th:replace="~{layout/sidebarUi :: heading('📈', '통계 대시보드')}"></summary>
+		            <ul class="tw-nav-items">
+		                <li>
+		                    <a th:href="@{/admin(section='stats')}"
+		                       th:attr="aria-current=${activeSection == 'stats' ? 'page' : null}">
+		                        <th:block th:replace="~{layout/sidebarUi :: label('📈', '접속자 및 결제 통계')}"></th:block>
+		                    </a>
+		                </li>
+		            </ul>
+		        </details>
+		    </div>
+		</nav>
+
+		<main class="main-viewport">
+			<div class="admin-header">
+				<h2 class="admin-title-h2">
+					<span>⚙️</span> <span>Taskwaka 시스템 관리자 콘솔</span>
+				</h2>
+
+				<nav class="tab-bar">
+					<a th:href="@{/admin/user}" class="tab-btn" th:classappend="${activeSection == 'user'} ? 'active'">회원 관리</a> 
+					<a th:href="@{/admin/domain}" class="tab-btn" th:classappend="${activeSection == 'domain'} ? 'active'">도메인 관리</a> 
+					<a th:href="@{/admin/notice}" class="tab-btn" th:classappend="${activeSection == 'notice'} ? 'active'">전체 공지사항</a>
+					<a th:href="@{/admin/inquiry}" class="tab-btn" th:classappend="${activeSection == 'inquiry'} ? 'active'">1:1 문의 답변</a> 
+					<a th:href="@{/admin/faq}" class="tab-btn" th:classappend="${activeSection == 'faq' or activeSection == 'faqWrite'} ? 'active'">FAQ 관리</a>
+					<a th:href="@{/admin/stats}" class="tab-btn" th:classappend="${activeSection == 'stats'} ? 'active'">통계 관리</a>
+				    <a th:href="@{/admin/security}" class="tab-btn" th:classappend="${activeSection == 'security'} ? 'active'">보안 설정</a>
+                </nav>
+            </div>
+
+			<section class="content-area">
+				<div th:switch="${activeSection}">
+					<div th:case="'user'">
+						<div th:replace="~{admin/fragments/user :: content}"></div>
+					</div>
+					<div th:case="'userDetail'">
+						<div th:replace="~{admin/fragments/user_detail :: content}"></div>
+					</div>
+					<div th:case="'domain'">
+						<div th:replace="~{admin/fragments/domain :: content}"></div>
+					</div>
+					<div th:case="'notice'">
+						<div th:replace="~{admin/fragments/notice :: content}"></div>
+					</div>
+					<div th:case="'noticeWrite'">
+					     <div th:replace="~{admin/fragments/notice-write :: content}"></div>
+					</div>
+					<div th:case="'noticeDetail'">
+					    <div th:replace="~{admin/fragments/notice-detail :: content}"></div>
+					</div>
+					<div th:case="'noticeEdit'">
+					    <div th:replace="~{admin/fragments/notice-edit :: content}"></div>
+					</div>
+					<div th:case="'inquiry'">
+						<div th:replace="~{admin/fragments/inquiry :: content}"></div>
+					</div>
+					<div th:case="'inquiryDetail'">
+						<div th:replace="~{admin/fragments/inquiry-detail :: content}"></div>
+					</div>
+					<div th:case="'faq'">
+						<div th:replace="~{admin/fragments/faq :: content}"></div>
+					</div>
+					<div th:case="'faqWrite'">
+					    <div th:replace="~{admin/fragments/faq-write :: content}"></div>
+					</div>
+					<div th:case="'faqEdit'">
+						<div th:replace="~{admin/fragments/faq-edit :: content}"></div>
+					</div>
+					<div th:case="'stats'">
+						<div th:replace="~{admin/fragments/stats :: content}"></div>
+					</div>
+					<div th:case="'security'">
+						<div th:replace="~{admin/fragments/security :: content}"></div>
+					</div>
+				</div>
+			</section>
+		</main>
+	</div>
+
+
+	<footer>
+		<th:block th:replace="~{layout/footer :: footer}"></th:block>
+	</footer>
+
+	<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+
+
+	
+
+<!-- Quill editor -->
+<script th:if="${activeSection == 'noticeWrite' or activeSection == 'noticeEdit'}" th:src="@{/dist/vendor/quill/js/quill.js}"></script>
+<script th:if="${activeSection == 'noticeWrite' or activeSection == 'noticeEdit'}" th:src="@{/dist/vendor/quill/js/resize.js}"></script>
+<script th:if="${activeSection == 'noticeWrite' or activeSection == 'noticeEdit'}" th:src="@{/dist/posts/qeditor.js}"></script>
+
+<!-- 관리자 수익 통계 Chart.js -->
+<script th:if="${activeSection == 'stats'}" src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script th:if="${activeSection == 'stats'}" th:src="@{/dist/js/adminStatsChart.js}"></script>
+
+<th:block th:if="${activeSection == 'noticeWrite'}"><th:block th:replace="~{admin/fragments/notice-write :: script}"></th:block></th:block>
+<th:block th:if="${activeSection == 'noticeEdit'}" th:replace="~{admin/fragments/notice-edit :: script}"></th:block>	
+<th:block th:if="${activeSection == 'domain'}" th:replace="~{admin/fragments/domain :: script}"></th:block>
+<script th:if="${activeSection == 'inquiryDetail'}" th:replace="~{admin/fragments/inquiry-detail :: script}"></script>
+<th:block th:if="${activeSection == 'inquiry'}" th:replace="~{admin/fragments/inquiry :: script}"></th:block>
+<th:block th:if="${activeSection == 'faqWrite'}"><th:block th:replace="~{admin/fragments/faq-write :: script}"></th:block></th:block>
+<th:block th:if="${activeSection == 'faqEdit'}"><th:block th:replace="~{admin/fragments/faq-edit :: script}"></th:block></th:block>
+</body>
+</html>

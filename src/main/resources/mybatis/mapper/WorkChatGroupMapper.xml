@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.tk.app.mapper.WorkChatGroupMapper">
+
+	<select id="findWorkIdByDomain" resultType="Long">
+    	SELECT workspace_id
+    	FROM workspace_domains
+    	WHERE domain_key = #{domainKey}
+      	AND active = 'Y'
+	</select>
+	
+	<insert id="insertGroupRoom" parameterType="WorkChatGroupDto">
+		INSERT INTO chat_rooms (chat_room_id, workspace_member_id, chat, room_name, created)
+    	VALUES (#{chatRoomId}, #{myWorkId}, 'GROUP', #{roomName}, SYSDATE)
+	</insert>
+	
+	
+	<select id="findMyGroupRooms" parameterType="WorkChatMemberDto" resultType="WorkChatMemberDto">
+	    SELECT cr.chat_room_id chatRoomId, cr.room_name roomName, cr.workspace_member_id ownerWorkMemberId,
+	        (
+	            SELECT COUNT(*)
+	            FROM chat_room_members crm
+	            JOIN workspace_members wm ON crm.workspace_member_id = wm.workspace_member_id
+	            WHERE crm.chat_room_id = cr.chat_room_id
+	              AND crm.status = 0
+	              AND wm.status = 0
+	        ) groupCount
+        	 
+	    FROM chat_rooms cr
+	
+	    JOIN workspace_members w_wm ON cr.workspace_member_id = w_wm.workspace_member_id
+	
+	    JOIN chat_room_members crm ON cr.chat_room_id = crm.chat_room_id
+	     AND crm.status = 0
+	
+	    JOIN workspace_members my_wm ON crm.workspace_member_id = my_wm.workspace_member_id
+	     AND my_wm.status = 0
+	
+	    JOIN workspace_domains wd ON my_wm.workspace_id = wd.workspace_id
+	     AND wd.domain_key = #{domainKey}
+	     AND wd.active = 'Y'
+	
+	    WHERE cr.chat = 'GROUP' 
+	    	AND my_wm.member_id = #{loginMemberId}
+	        AND w_wm.workspace_id = my_wm.workspace_id
+	    ORDER BY cr.created DESC, cr.chat_room_id DESC
+	
+	</select>
+	
+	
+	<update id="updateGroupRoomName"
+	        parameterType="WorkChatGroupDto">
+	
+	    UPDATE chat_rooms SET room_name = #{roomName}
+	    WHERE chat_room_id = #{chatRoomId}
+	      AND workspace_member_id = #{myWorkId}
+	      AND chat = 'GROUP'
+	
+	</update>
+	
+	<select id="findGroupRoomMembers" parameterType="Long" resultType="WorkChatMemberDto">
+	    SELECT wm.workspace_member_id workMemberId, wm.member_id memberId,
+	        md.name name, wm.role role, md.profile profilePhoto
+	    FROM chat_room_members crm
+	
+	    JOIN workspace_members wm ON crm.workspace_member_id = wm.workspace_member_id
+	
+	    JOIN members m ON wm.member_id = m.member_id
+	
+	    JOIN member_details md ON wm.member_id = md.member_id
+	
+	    WHERE crm.chat_room_id = #{chatRoomId}
+	      AND crm.status = 0
+	      AND wm.status = 0
+	      AND m.status = 0
+	    ORDER BY md.name ASC
+	
+	</select>
+	
+
+	<select id="findRoomMemberStatus" parameterType="WorkChatMemberDto" resultType="Integer">
+	    SELECT status
+	    FROM chat_room_members
+	    WHERE chat_room_id = #{chatRoomId}
+	      AND workspace_member_id = #{workMemberId}
+	</select>
+	
+
+	<update id="reactivateRoomMember" parameterType="WorkChatMemberDto">
+	    UPDATE chat_room_members
+	    SET status = 0, joined = SYSDATE, left = NULL,
+	        visible_after_message_id = #{visibleAfterMessageId},
+	        last_read_message_id = #{visibleAfterMessageId}
+	
+	    WHERE chat_room_id = #{chatRoomId}
+	      AND workspace_member_id = #{workMemberId}
+	      AND status = 1
+	</update>
+	
+	<update id="leaveGroupRoom" parameterType="WorkChatMemberDto">
+    UPDATE chat_room_members SET status = 1
+    WHERE chat_room_id = #{chatRoomId}
+      AND workspace_member_id = #{workMemberId}
+      AND status = 0
+	</update>
+	
+	<update id="transferGroupMaster" parameterType="WorkChatMemberDto">
+	    UPDATE chat_rooms cr SET workspace_member_id = #{targetWorkId}
+	    WHERE cr.chat_room_id = #{chatRoomId}
+	      AND cr.chat = 'GROUP'
+	      AND cr.workspace_member_id = #{myWorkId}
+	      AND #{targetWorkId} != #{myWorkId}
+	      AND EXISTS (
+	          SELECT 1
+	          FROM chat_room_members crm
+	
+	          JOIN workspace_members t_wm ON crm.workspace_member_id = t_wm.workspace_member_id
+	
+	          JOIN workspace_members c_wm ON c_wm.workspace_member_id = cr.workspace_member_id
+	
+	          WHERE crm.chat_room_id = cr.chat_room_id
+	            AND crm.workspace_member_id = #{targetWorkId}
+	            AND crm.status = 0
+	            AND t_wm.status = 0
+	            AND c_wm.status = 0
+	
+	            AND t_wm.workspace_id = c_wm.workspace_id
+	      )
+	</update>
+	
+	<select id="countActiveGroupRoomMembers" parameterType="Long" resultType="int" >
+	    SELECT COUNT(*)
+	    FROM chat_room_members
+	    WHERE chat_room_id = #{chatRoomId}
+	      AND status = 0
+	</select>
+	
+	<delete id="deleteEmptyGroupRoomMessages" parameterType="Long">
+	    DELETE FROM chat_messages
+	    WHERE chat_room_id = #{chatRoomId}
+	      AND EXISTS (
+	          SELECT 1 FROM chat_rooms
+	          WHERE chat_room_id = #{chatRoomId}
+	            AND chat = 'GROUP'
+	      )
+	      AND NOT EXISTS (
+	          SELECT 1 FROM chat_room_members
+	          WHERE chat_room_id = #{chatRoomId}
+	            AND status = 0
+	      )
+	</delete>
+	
+	<delete id="deleteEmptyGroupRoomMembers" parameterType="Long">
+	    DELETE FROM chat_room_members
+	    WHERE chat_room_id = #{chatRoomId}
+	      AND EXISTS (
+	          SELECT 1 FROM chat_rooms
+	          WHERE chat_room_id = #{chatRoomId}
+	            AND chat = 'GROUP'
+	      )
+	      AND NOT EXISTS (
+	          SELECT 1 FROM chat_room_members
+	          WHERE chat_room_id = #{chatRoomId}
+	            AND status = 0
+	      )
+	</delete>
+	
+	<delete id="deleteEmptyGroupRoom" parameterType="Long">
+	    DELETE FROM chat_rooms
+	    WHERE chat_room_id = #{chatRoomId}
+	      AND chat = 'GROUP'
+	      AND NOT EXISTS (
+	          SELECT 1 FROM chat_room_members
+	          WHERE chat_room_id = #{chatRoomId}
+	      )
+	</delete>
+	
+
+</mapper>

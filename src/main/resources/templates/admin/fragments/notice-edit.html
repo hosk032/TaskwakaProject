@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<title>Insert title here</title>
+</head>
+<body>
+	<div th:fragment="content" class="notice-form-page">
+		<div class="panel-card">
+
+			<div class="panel-card-title">공지사항 수정</div>
+
+			<form id="noticeEditForm" th:action="@{/admin/notice/update}" method="post" enctype="multipart/form-data">
+
+				<input type="hidden" name="notice_id" th:value="${detail.notice_id}">
+
+				<div class="notice-field">
+					<label>공지 제목</label> <input type="text" name="title" th:value="${detail.title}" class="warm-input">
+				</div>
+
+				<div class="notice-field">
+					<label>공지 내용</label>
+					<div id="editor"></div>
+					<input type="hidden" name="content" id="content">
+					<textarea id="originalContent" hidden th:text="${detail.content}"></textarea>
+				</div>
+
+				<div class="notice-field">
+				    <label>기존 첨부파일</label>
+				
+				    <div class="notice-edit-files" th:if="${fileList != null and !fileList.isEmpty()}">
+				        <div class="notice-edit-file" th:each="file : ${fileList}">
+				            <span class="notice-upload-name" th:text="${file.original_name}"></span>
+				            <button type="button" class="delete-file notice-upload-remove" th:attr="data-fileNum=${file.notice_file_id}">삭제</button>
+				        </div>
+				    </div>
+				
+				    <div class="notice-empty-files" th:if="${fileList == null or fileList.isEmpty()}">
+				        첨부된 파일이 없습니다.
+				    </div>
+				</div>
+
+				<div class="notice-field notice-upload">
+				    <label>파일 추가</label>
+				
+				    <div class="notice-upload-box">
+				        <div class="notice-upload-description">📄 추가할 파일을 선택해 주세요.</div>
+				        <input type="file" id="noticeNewFiles" name="files" multiple>
+				        <div id="noticeNewFileList" data-file-input="noticeNewFiles"
+                            data-row-class="notice-upload-item" data-name-class="notice-upload-name"
+                            data-remove-class="notice-new-delete" class="notice-upload-list"></div>
+				    </div>
+				</div>
+
+				<div class="notice-edit-bottom">
+				    <label class="notice-edit-status">
+				        <input type="checkbox" name="hideNotice" value="true" th:checked="${detail.status == 0}">
+				        비공개 (체크하면 숨기기)
+				    </label>
+				
+				    <div class="notice-form-actions">
+				        <a th:href="@{/admin/notice}" class="notice-list-btn">취소</a>
+				        <button type="submit" class="btn-sage">수정하기</button>
+				    </div>
+				</div>
+			</form>
+		</div>
+	</div>
+	
+<th:block th:fragment="script">
+    <script th:if="${activeSection == 'noticeEdit'}">
+	
+	    const originalContent = document.getElementById('originalContent').value;
+	
+	    quill.clipboard.dangerouslyPasteHTML(originalContent);
+	
+	    document.getElementById('noticeEditForm').addEventListener('submit', function() {
+	
+	            document.getElementById('content').value = quill.root.innerHTML;
+	        });
+	    
+	    document.querySelectorAll('.delete-file').forEach(function(button) {
+	        button.addEventListener('click', function() {
+	            const fileNum = this.getAttribute('data-fileNum');
+
+	
+	            fetch('/admin/notice/deleteFile', {
+	                method: 'POST',
+	                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+	                body: 'notice_file_id=' + fileNum
+	            })
+	            .then(response => {
+	                if (!response.ok) {
+	                    throw new Error('파일 삭제 실패');
+	                }
+	                this.closest('.notice-edit-file').remove();
+	            })
+	            .catch(error => {
+	                console.error(error);
+	                alert('파일 삭제 중 오류가 발생했습니다.');
+	            });
+	        });
+	    });
+	    
+    </script>
+    <script th:src="@{/dist/js/selected-files.js}"></script>
+</th:block>	
+	
+</body>
+</html>

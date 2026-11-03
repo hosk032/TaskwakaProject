@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.tk.app.mapper.MemberMapper">
+
+    <update id="updateMemberEnabled" parameterType="map">
+		UPDATE members SET status = #{status}
+		<where>
+			<choose>
+				<when test="login_id != null">
+					login_id = #{login_id}
+				</when>
+				<otherwise>
+					member_id = #{member_id}
+				</otherwise>
+			</choose>
+		</where>
+    </update>
+
+	<!-- 로그인 시간 변경 -->
+	<update id="updateLastLogin" parameterType="Long">
+		UPDATE members SET last_login = SYSDATE, fail_cnt = 0
+		WHERE member_id = #{member_id}
+	</update>
+
+	<update id="updateLastLoginId" parameterType="String">
+		UPDATE members SET last_login = SYSDATE, fail_cnt = 0
+		WHERE login_id = #{login_id}
+	</update>
+
+	<!-- 회원 정보 -->
+
+	<select id="findByLoginId" parameterType="String" resultType="MemberDto">
+		SELECT m.member_id, m.login_id, m.password, m.status, m.fail_cnt, m.blocked_until,
+				m.last_login, d.name, d.email, d.birth, d.phone, d.profile AS profile_photo, s.role,
+			(
+				SELECT MAX(wm.role)
+				FROM workspace_members wm
+				WHERE wm.member_id = m.member_id
+				  AND wm.status = 0
+			) AS workspaceRole
+		FROM members m
+		LEFT OUTER JOIN member_details d ON m.member_id = d.member_id
+		LEFT OUTER JOIN security s ON m.member_id = s.member_id
+		WHERE m.login_id = #{login_id}
+	</select>
+
+	<select id="getMemberId" parameterType="String" resultType="Long">
+		SELECT member_id
+		FROM members
+		WHERE login_id = #{login_id}
+	</select>
+
+	<!-- 패스워드 실패 횟수 -->
+	<select id="checkFailureCount" parameterType="String" resultType="Integer">
+		SELECT NVL(fail_cnt, 0) fail_cnt
+		FROM members
+		WHERE login_id = #{login_id}
+	</select>
+	
+	<!-- 패스워드 실패 횟수 초기화 -->
+	<update id="updateFailureCountReset" parameterType="String">
+		UPDATE members SET fail_cnt = 0
+		WHERE login_id = #{login_id}
+	</update>
+	
+	<!-- 패스워드 실패 횟수 증가 -->
+	<update id="updateFailureCount" parameterType="String">
+		UPDATE members SET fail_cnt = fail_cnt + 1
+		WHERE login_id = #{login_id}
+	</update>
+	
+	<select id="memberSeq" resultType="Long">
+		SELECT seq_members.NEXTVAL FROM dual
+	</select>
+	
+	<insert id="insertMember1" parameterType="MemberDto">
+		INSERT INTO members (
+			member_id, login_id, password, status, fail_cnt, joined
+		)
+		VALUES (
+			#{member_id}, #{login_id}, #{password}, 0, 0, SYSDATE
+		)
+	</insert>
+	
+	<insert id="insertMember2" parameterType="MemberDto">
+		INSERT INTO member_details (
+			member_id, name, email, birth, phone, address
+		)
+		VALUES (
+			#{member_id}, #{name}, #{email}, TO_DATE(#{birth}, 'YYYY-MM-DD'), #{phone}, #{address, jdbcType=VARCHAR}
+		)
+	</insert>
+	
+	<insert id="insertAuthority" parameterType="MemberDto">
+	INSERT INTO security (member_id, role)
+	VALUES (#{member_id}, 'USER')
+	</insert>
+	
+	<select id="countByLoginId" parameterType="String" resultType="Integer">
+		SELECT COUNT(*)
+		FROM members
+		WHERE UPPER(login_id) = UPPER(#{login_id})
+	</select>
+	
+	<select id="listFindMember" parameterType="map" resultType="MemberDto">
+	    SELECT m.login_id
+	    FROM members m
+	    JOIN member_details d ON m.member_id = d.member_id
+	    WHERE d.name = #{name}
+	      AND LOWER(d.email) = LOWER(#{email})
+	</select>
+	
+	<select id="findByLoginIdAndEmail" parameterType="map" resultType="com.tk.app.domain.dto.MemberDto">
+	    SELECT m.member_id, d.name, m.login_id
+	    FROM members m
+	    JOIN member_details d
+	        ON m.member_id = d.member_id
+	    WHERE m.login_id = #{login_id}
+	    	  AND d.name = #{name}
+	      AND LOWER(d.email) = LOWER(#{email})
+	</select>
+	
+	
+	<insert id="insertPasswordResetToken" parameterType="map">
+	    INSERT INTO password_reset_tokens
+	        (token_hash, member_id, expires_at)
+	    VALUES
+	        (#{token_hash}, #{member_id},
+	         SYSTIMESTAMP + INTERVAL '10' MINUTE)
+	</insert>
+	
+	
+	<select id="findResetMemberId" parameterType="map" resultType="java.lang.Long">
+	    SELECT member_id
+	    FROM password_reset_tokens
+	    WHERE token_hash = #{token_hash}
+	      AND expires_at > SYSTIMESTAMP
+	      AND used_at IS NULL
+	</select>
+	
+	
+	<update id="updateMemberPassword" parameterType="MemberDto">
+	    UPDATE members
+	    SET password = #{password}, fail_cnt = 0, blocked_until = NULL
+	    WHERE member_id = #{member_id}
+	</update>
+	
+	<update id="useResetToken" parameterType="map">
+	    UPDATE password_reset_tokens
+	    SET used_at = SYSTIMESTAMP
+	    WHERE token_hash = #{token_hash}
+	      AND used_at IS NULL
+	      AND expires_at > SYSTIMESTAMP
+	</update>
+	
+	
+	<select id="loginSnsMember" parameterType="map" resultType="MemberDto">
+	    SELECT m.member_id, m.login_id, m.password, m.status, m.fail_cnt, m.blocked_until, s.role
+	    FROM social_accounts a
+	    JOIN members m
+	      ON a.member_id = m.member_id
+	    JOIN security s
+	      ON s.member_id = m.member_id
+	    WHERE a.provider = #{provider}
+	      AND a.provider_user_id = #{provider_user_id}
+	</select>
+		
+	<insert id="insertSnsMember" parameterType="MemberDto">
+    INSERT INTO social_accounts (
+        social_account_id, member_id, provider, provider_user_id, created
+    )
+    VALUES (
+        seq_social_accounts.NEXTVAL, #{member_id}, #{sns_provider}, #{sns_id}, SYSDATE
+    )
+	</insert>
+	
+	<select id="findPasswordByMemberId" parameterType="Long" resultType="String">
+	    SELECT password
+	    FROM members
+	    WHERE member_id = #{member_id}
+	</select>
+	
+</mapper>

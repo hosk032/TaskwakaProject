@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/layout3}">
+
+<th:block layout:fragment="css">
+    <link rel="stylesheet" th:href="@{/dist/css/home.css}">
+    <link rel="stylesheet" th:href="@{/dist/css/manage/manage.css}">
+    <link rel="stylesheet" th:href="@{/dist/css/page-shell.css}">
+    <link rel="stylesheet" th:href="@{/dist/vendor/quill/css/quill.snow.css}">
+</th:block>
+
+<th:block layout:fragment="content">
+    <div class="home-layout manage-layout">
+        <nav th:replace="~{layout/homeSidebar::homeSidebar('noticeEdit')}"></nav>
+
+        <div class="section shell-section">
+            <div class="page-heading">
+                <h1 class="page-title">공지사항 수정</h1>
+                <p class="page-description">공지사항의 내용을 수정하세요.</p>
+            </div>
+            
+			<form id="noticeEditForm" method="post" enctype="multipart/form-data"
+				th:action="@{/{domainKey}/home/noticeEdit(domainKey=${domainKey})}">
+			    <input type="hidden" name="noticeId" th:value="${notice.noticeId}">
+			
+			    <div class="mb-3">
+			        <label for="noticeTitle" class="form-label">제목</label>
+			        <input type="text" id="noticeTitle" name="title" class="form-control"
+			               maxlength="200" required th:value="${notice.title}">
+			    </div>
+			
+			    <div class="mb-3">
+			       <label id="noticeEditContentLabel" class="form-label">내용</label>
+					<div id="noticeEditEditor" class="editor"
+					     th:data-upload-url="@{/editor/upload}"></div>
+					<textarea id="noticeContent" name="content" hidden
+					          th:text="${notice.content}"></textarea>
+			    </div>
+			    
+				<p class="notice-attachments">
+				    첨부파일
+				    <span th:if="${#lists.isEmpty(noticeFile)}">첨부파일이 없습니다.</span>
+				    <span th:each="file : ${noticeFile}">
+				    		<span th:text="${file.originalName}">파일명</span>
+				    		<label>
+				    			<input type="checkbox" name="deleteFileIds" th:value="${file.noticeFileId}"
+				    			       th:checked="${deleteFileIds != null and #lists.contains(deleteFileIds, file.noticeFileId)}">
+				    			삭제
+				    		</label>
+				    	</span>
+				</p>
+				
+				<label>
+					<input type="file" name="files" multiple="multiple">
+				</label>
+				<p class="form-text">삭제하지 않은 기존 파일과 새 파일을 합해 최대 5개까지 첨부할 수 있습니다.</p>
+				<p class="form-text" th:if="${errorMessage != null}">새로 첨부할 파일은 다시 선택해 주세요.</p>
+			
+			    <div class="shell-actions">
+			        <button type="submit" class="shell-action shell-action-primary">
+			            수정완료
+			        </button>
+			
+			        <button type="reset" class="shell-action">
+			            초기화
+			        </button>
+			
+			        <a th:href="@{/{domainKey}/home/notice(domainKey=${domainKey})}" class="shell-action">
+			            목록으로
+			        </a>
+			    </div>
+			</form>
+			
+			<div th:if="${errorMessage != null}" class="alert alert-danger" role="alert" th:text="${errorMessage}"></div>
+        </div>
+    </div>
+</th:block>
+
+<th:block layout:fragment="script">
+    <script th:src="@{/dist/vendor/quill/js/quill.js}"></script>
+    
+    <script>
+    const noticeEditQuill = new Quill('#noticeEditEditor', {
+        theme: 'snow',
+        placeholder: '공지 내용을 입력하세요.',
+        modules: {
+            toolbar: [
+                ['bold', 'italic', 'underline'],
+                [{ list: 'ordered' }, { list: 'bullet' }],
+                ['image'], ['clean']
+            ]
+        }
+    });
+
+    noticeEditQuill.root.setAttribute('aria-labelledby', 'noticeEditContentLabel');
+    noticeEditQuill.container.style.height = '260px';
+    noticeEditQuill.container.style.fontSize = '16px';
+    noticeEditQuill.container.style.fontFamily = 'inherit';
+    noticeEditQuill.root.style.lineHeight = '1.7';
+    
+    const noticeContent = document.getElementById('noticeContent');
+	// noticeContent.value : 본문 HTML 읽기
+	// dangerouslyPasteHTML : 글의 서식과 이미지를 에디터에 불러오기
+    noticeEditQuill.clipboard.dangerouslyPasteHTML(noticeContent.value, 'silent');
+	// 처음 불러온 내용이 실행 취소로 지워지지 않도록 기록 
+    noticeEditQuill.history.clear();
+	
+	// 글과 이미지가 모두 없으면 전송 막기
+	noticeContent.form.addEventListener('submit', (event) => {
+			// 이미지 업로드 연결
+			if(noticeImageUploadCount > 0) {
+				event.preventDefault();
+			    alert('이미지 업로드가 끝난 후 저장해 주세요.');
+			    return;
+			}
+		
+			if (!noticeEditQuill.getText().trim() && !noticeEditQuill.root.querySelector('img')) {
+			    event.preventDefault();
+			    alert('공지 내용을 입력하세요.');
+			    noticeEditQuill.focus();
+			    return;
+			}
+			
+			noticeContent.value = noticeEditQuill.getSemanticHTML();
+	});
+	
+	// 처음 불러온 본문을 기억해두었다가 초기화를 누르면 복원
+	const initialNoticeContents = noticeEditQuill.getContents();
+
+	noticeContent.form.addEventListener('reset', () => {
+	    noticeEditQuill.setContents(initialNoticeContents);
+	    noticeEditQuill.history.clear();
+	});
+	
+	// 업로드 파일 이미지
+	async function uploadNoticeImage(file, uploadUrl) {
+		const formData = new FormData();
+		formData.append('imageFile', file);
+		
+		const response = await fetch(uploadUrl, {
+			method: 'POST',
+			body: formData
+		});
+		
+		// 요청이 실패했거나, 다른 주소로 이동됐다면
+		if(!response.ok || response.redirected) {
+			throw new Error('이미지 업로드에 실패했습니다.');
+		}
+		
+		// response.json(): 응답 본문을 JSON으로 해석
+		// 본문이 비었거나 JSON 형식이 아니면 null을 반환
+		const result = await response.json().catch(() => null);
+		
+		// !result : 응답을 읽지 못하거나
+		// result.imageUrl != 'string' : 이미지 주소가 없거나 문자열이 아니거나
+		// !result.imageUrl.trim() : 이미지 주소가 빈 문자열이거나 공백뿐일때
+		if(!result || typeof result.imageUrl != 'string' || !result.imageUrl.trim()) {
+			throw new Error('업로드된 이미지 주소를 확인할 수 없습니다.');	
+		}
+		
+		return result.imageUrl;
+	}
+	let noticeImageUploadCount = 0;
+	
+	// 툴바 기능 가져오기
+	// 이미지 버튼 클릭 시 동작 지정
+	noticeEditQuill.getModule('toolbar').addHandler('image', () => {
+	    // 에디터에 초점. 이미지를 넣을 위치
+		const range = noticeEditQuill.getSelection(true);
+	    // 파일 선택에 사용할 input
+	    const input = document.createElement('input');
+	    input.type = 'file';
+	    input.accept = 'image/*';
+
+	    // 파일 선택 시 업로드 처리
+	    input.addEventListener('change', async () => {
+	        // 첫번째 파일 꺼내기
+	    		const file = input.files[0];
+	        // 파일이 없으면 리턴
+	        if (!file) return;
+	        
+	        noticeImageUploadCount++;
+
+	        try {
+	        		// 주소 읽기
+	            const uploadUrl =
+	                    document.getElementById('noticeEditEditor').dataset.uploadUrl;
+	            // 파일 업로드
+	        		const imageUrl = await uploadNoticeImage(file, uploadUrl);
+	            // 에디터 끝 줄바꿈 앞 위치 구하기
+	            const lastIndex = noticeEditQuill.getLength() - 1;
+	            // 기억한 커서 위치가 있으면 사용하고 없으면 본문 끝을 사용함
+	            const index = Math.min(range ? range.index : lastIndex, lastIndex);
+
+	            // 이미지 넣기
+	            noticeEditQuill.insertEmbed(index, 'image', imageUrl, 'user');
+	            // 이미지 뒤로 커서 옮기기
+	            noticeEditQuill.setSelection(index + 1, 0, 'user');
+	        } catch (error) {
+	            alert(error.message);
+	        } finally {
+	        		// 이미지 업로드가 끝나기 전에 공지가 등록되는 것을 방지
+	        		noticeImageUploadCount--;
+	        }
+	    });
+		
+	    // 파일창 열기
+	    input.click();
+	});
+</script>
+</th:block>
+
+</html>

@@ -1,0 +1,26 @@
+package com.tk.app.admin.domain.dto;
+
+import java.util.Date;
+import java.util.List;
+
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Getter
+@Setter
+@NoArgsConstructor
+public class AdminMemberDto {
+	private long member_id;
+	private String login_id;
+	private int status;
+	private Date joined;
+	private Date last_login;
+	private Date withdrawn;
+	private String name;
+	private String email;
+	private int fail_cnt;
+	private String workspace_names;
+	private String role_names;
+	private List<AdminWorkspaceMemberDto> workspaces;
+}

@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/layout3}">
+
+<th:block layout:fragment="css">
+    <link rel="stylesheet" th:href="@{/dist/css/home.css}">
+    <link rel="stylesheet" th:href="@{/dist/css/page-shell.css}">
+    <link rel="stylesheet" th:href="@{/dist/tree/growthTree.css}">
+</th:block>
+
+<th:block layout:fragment="content">
+    <div class="home-layout">
+        <nav th:replace="~{layout/homeSidebar::homeSidebar('growthTree')}"></nav>
+
+        <div class="section shell-section">
+            <div class="page-heading">
+                <h1 class="page-title">팀 성장나무</h1>
+                <p class="page-description">
+                    팀의 활동으로 나무를 키우고 함께 꾸며보세요.
+                </p>
+            </div>
+
+            <div class="shell-content growth-content">
+
+                <!-- 성장 상태 -->
+                <div class="growth-summary">
+                    <div>현재 단계 <strong th:text="${growthTree.levelName}">—</strong></div>
+                    <div>누적 경험치 <strong th:text="|${growthTree.totalExp} EXP|">— EXP</strong></div>
+                    <div th:if="${nextGrowthLevel != null}">
+                    		다음 단계까지 <strong th:text="|${remainingGrowthExp} EXP|">— EXP</strong>
+                    </div>
+                    <div th:if="${nextGrowthLevel == null}">
+					    <strong>최고 단계 달성</strong>
+					</div>
+                    <div>사용 가능한 EXP
+                        <strong id="summaryAvailableExp" aria-live="polite"
+                                th:text="|${growthTree.totalExp > 400 ? growthTree.totalExp - 400 : 0} EXP|">0 EXP</strong>
+                    </div>
+                </div>
+
+                <!-- 나무 이미지와 커스텀 아이템 -->
+                <div class="tree-workspace">
+                    <div class="tree-preview">
+                        <span class="tree-preview-label">나무 미리보기</span>
+
+                        <div class="tree-image-area">
+                            <img class="tree-image" src="/dist/tree/line/seed.png" th:alt="|${growthTree.levelName} 단계의 팀 성장나무|"
+                                    th:src="@{${growthTree.treeImagePath}}" alt="씨앗 단계의 팀 성장나무">
+
+                      	<!-- 착용한 열매 5개를 표시할 영역 -->
+						<div id="treeFruitLayer" class="tree-fruit-layer" hidden aria-hidden="true">
+						    <img th:each="fruitIndex : ${#numbers.sequence(1, 5)}"
+						         class="tree-fruit"
+						         th:src="@{/dist/tree/items/persimmon.png}"
+						         alt="">
+						</div>
+						
+						<!-- 착용템 중 모자 나무 위에 표시 -->
+						<img id="treeHatImage" class="tree-hat" alt="" th:src="@{/dist/tree/items/hat.png}" hidden aria-hidden="true">
+                        	<!-- 종류별로 착용한 장식 2개를 표시할 영역 -->
+							<div id="treeBaubleLayer"
+							     class="tree-decoration-layer tree-decoration-bauble"
+							     th:attr="data-decoration=@{/dist/tree/items/tree-bauble.png}"
+							     hidden aria-hidden="true">
+							    <img th:each="decorationIndex : ${#numbers.sequence(1, 2)}"
+							         class="tree-decoration"
+							         th:src="@{/dist/tree/items/tree-bauble.png}" alt="">
+							</div>
+							
+							<div id="treeGoldCharmLayer"
+							     class="tree-decoration-layer tree-decoration-gold"
+							     th:attr="data-decoration=@{/dist/tree/items/gold-charm.png}"
+							     hidden aria-hidden="true">
+							    <img th:each="decorationIndex : ${#numbers.sequence(1, 2)}"
+							         class="tree-decoration"
+							         th:src="@{/dist/tree/items/gold-charm.png}" alt="">
+							</div>
+							
+							<div id="treeSilverCharmLayer"
+							     class="tree-decoration-layer tree-decoration-silver"
+							     th:attr="data-decoration=@{/dist/tree/items/silver-charm.png}"
+							     hidden aria-hidden="true">
+							    <img th:each="decorationIndex : ${#numbers.sequence(1, 2)}"
+							         class="tree-decoration"
+							         th:src="@{/dist/tree/items/silver-charm.png}" alt="">
+							</div>
+                        </div>
+                        
+                        <!-- 나무 주변에 배치할 펫 -->
+						<div id="treePetLayer" class="tree-pet-layer" hidden aria-hidden="true">
+						    <img class="tree-pet tree-pet-dog"
+						         th:attr="data-pet=@{/dist/tree/items/dog.png}"
+						         th:src="@{/dist/tree/items/dog.png}"
+						         alt="" hidden>
+						
+						    <img class="tree-pet tree-pet-quokka"
+						         th:attr="data-pet=@{/dist/tree/items/quokka.png}"
+						         th:src="@{/dist/tree/items/quokka.png}"
+						         alt="" hidden>
+						
+						    <img class="tree-pet tree-pet-turtle"
+						         th:attr="data-pet=@{/dist/tree/items/turtle.png}"
+						         th:src="@{/dist/tree/items/turtle.png}"
+						         alt="" hidden>
+						
+						    <img class="tree-pet tree-pet-cat"
+						         th:attr="data-pet=@{/dist/tree/items/cat.png}"
+						         th:src="@{/dist/tree/items/cat.png}"
+						         alt="" hidden>
+						</div>
+
+                        <p class="tree-preview-description">
+                            팀 활동으로 모은 경험치로 나무가 성장해요!
+                        </p>
+                    </div>
+
+                <!-- 5단계 도달 여부와 화면에서 사용할 추가 경험치 전달 -->
+                <!-- 저장키 구분할 부분 -->
+				<aside class="tree-shop" th:data-asset-root="@{/dist/}" th:data-shop-url="@{/{domainKey}/home/growthTree/shop(domainKey=${domainKey})}"
+				       aria-labelledby="tree-shop-title"
+				       th:with="shopEnabled=${growthTree.levelNo >= 5 and growthTree.totalExp >= 400}"
+				       th:attr="data-shop-enabled=${shopEnabled},
+					         data-shop-exp=${growthTree.totalExp > 400 ? growthTree.totalExp - 400 : 0},
+					         data-member-id=${#authentication.principal.member.member_id},
+					         data-workspace-id=${workspace.workspaceId}">
+                    <div class="tree-shop-heading">
+                        <div class="tree-shop-title-row">
+                            <h2 id="tree-shop-title"><span aria-hidden="true">🛍️</span> 나무 상점</h2>
+                            <span class="tree-shop-preview-badge" th:text="${shopEnabled ? '이용 가능' : '미리보기'}">미리보기</span>
+                        </div>
+                        <p>우리 팀의 정원을 꾸며보세요.</p>
+                        <!-- aria-live="polite" : 현재 읽고 있는 내용을 마친 뒤 변경 내용을 안내하라 -->
+                        <!-- 성장에 필요한 400 EXP를 제외한 사용 가능 경험치 -->
+						<div class="tree-shop-wallet">
+						    <span>사용 가능한 EXP</span>
+						    <strong id="shopAvailableExp"
+						            aria-live="polite"
+						            th:text="|${growthTree.totalExp > 400 ? growthTree.totalExp - 400 : 0} EXP|">
+						        0 EXP
+						    </strong>
+						</div>
+                    </div>
+
+                    <div class="tree-shop-categories" role="group" aria-label="상점 아이템 분류">
+                        <button type="button" class="tree-shop-category is-active" 
+                        		data-shop-category="background" aria-pressed="true" 
+                      		aria-controls="shop-background">배경</button>
+                        <button type="button" class="tree-shop-category" 
+                        		data-shop-category="fruit" aria-pressed="false" 
+                        		aria-controls="shop-fruit">열매</button>
+                        <button type="button" class="tree-shop-category" 
+                        		data-shop-category="accessory" aria-pressed="false" 
+                        		aria-controls="shop-accessory">착용</button>
+                        <button type="button" class="tree-shop-category" 
+                        		data-shop-category="pet" aria-pressed="false" 
+                        		aria-controls="shop-pet">펫</button>
+                    </div>
+
+					<!-- 배경템 -->
+                    <p id="shopMessage" role="status"></p>
+                    <div class="tree-shop-catalog">
+                        <section id="shop-background" class="tree-shop-panel" data-shop-items="background" 
+                        		aria-labelledby="shop-background-title">
+                            <h3 id="shop-background-title">배경 이미지 <span>4가지 풍경</span></h3>
+                            <ul class="tree-shop-products">
+                                <li class="tree-shop-product is-equipped"
+								    data-price="0"
+								    th:attr="data-background=@{/dist/tree/backgrounds/warm-cottage.png}">
+                                    <div class="tree-shop-thumbnail">
+                                    <img th:src="@{/dist/tree/backgrounds/warm-cottage.png}" alt="" loading="lazy">
+                                    <span class="tree-shop-item-badge">기본</span></div>
+                                    <strong class="tree-shop-item-name">따뜻한 집</strong>
+                                    <span class="tree-shop-price is-default">✓ 적용 중</span>
+                                </li>
+                                <li class="tree-shop-product"
+								    data-price="10"
+								    th:attr="data-background=@{/dist/tree/backgrounds/green-forest.png}">
+                                    <div class="tree-shop-thumbnail">
+                                    <img th:src="@{/dist/tree/backgrounds/green-forest.png}" alt="" loading="lazy"></div>
+                                    <strong class="tree-shop-item-name">초록 숲</strong>
+                                    <span class="tree-shop-price">10 EXP</span>
+                                </li>
+								<li class="tree-shop-product"
+								    data-price="10"
+								    th:attr="data-background=@{/dist/tree/backgrounds/seaside.png}">
+                                    <div class="tree-shop-thumbnail">
+                                    <img th:src="@{/dist/tree/backgrounds/seaside.png}" alt="" loading="lazy"></div>
+                                    <strong class="tree-shop-item-name">바닷가</strong>
+                                    <span class="tree-shop-price">10 EXP</span>
+                                </li>
+								<li class="tree-shop-product"
+								    data-price="10"
+								    th:attr="data-background=@{/dist/tree/backgrounds/starry-night.png}">
+                                    <div class="tree-shop-thumbnail">
+                                    <img th:src="@{/dist/tree/backgrounds/starry-night.png}" alt="" loading="lazy"></div>
+                                    <strong class="tree-shop-item-name">별빛 밤</strong>
+                                    <span class="tree-shop-price">10 EXP</span>
+                                </li>
+                            </ul>
+                        </section>
+
+						<!-- 열매 아이템 -->
+                        <section id="shop-fruit" class="tree-shop-panel" data-shop-items="fruit" aria-labelledby="shop-fruit-title" hidden>
+                            <h3 id="shop-fruit-title">열매 아이템 <span>한 세트에 5알</span></h3>
+                            <ul class="tree-shop-products">
+                                <li class="tree-shop-product"
+								    data-price="30"
+								    th:attr="data-fruit=@{/dist/tree/items/persimmon.png}">
+                                		<div class="tree-shop-icon tree-shop-icon-fruit">
+	                                		<img th:src="@{/dist/tree/items/persimmon.png}" alt="" loading="lazy">
+	                                		<span class="tree-shop-item-badge">5알</span>
+                                		</div>
+                                		
+                                		<strong class="tree-shop-item-name">감</strong>
+                                		<span class="tree-shop-price">30 EXP</span>
+                                	</li>
+                                	
+                                <li class="tree-shop-product"
+								    data-price="30"
+								    th:attr="data-fruit=@{/dist/tree/items/apple.png}">
+                                		<div class="tree-shop-icon tree-shop-icon-fruit">
+                                			<img th:src="@{/dist/tree/items/apple.png}" alt="" loading="lazy">
+                                			<span class="tree-shop-item-badge">5알</span>
+                                		</div>
+                                		
+                                		<strong class="tree-shop-item-name">사과</strong>
+                                			<span class="tree-shop-price">30 EXP</span>
+                                	</li>
+                                	
+                                <li class="tree-shop-product"
+								    data-price="30"
+								    th:attr="data-fruit=@{/dist/tree/items/orange.png}">
+                                		<div class="tree-shop-icon tree-shop-icon-fruit">
+                                			<img th:src="@{/dist/tree/items/orange.png}" alt="" loading="lazy">
+                                			<span class="tree-shop-item-badge">5알</span>
+                                		</div>
+                                		
+                                		<strong class="tree-shop-item-name">오렌지</strong>
+                                		<span class="tree-shop-price">30 EXP</span>
+                                	</li>
+                                	
+                                <li class="tree-shop-product"
+								    data-price="30"
+								    th:attr="data-fruit=@{/dist/tree/items/mandarin.png}">
+                                		<div class="tree-shop-icon tree-shop-icon-fruit">
+                                			<img th:src="@{/dist/tree/items/mandarin.png}" alt="" loading="lazy">
+                                			<span class="tree-shop-item-badge">5알</span>
+                               		</div>
+                               		
+                               		<strong class="tree-shop-item-name">귤</strong>
+                               		<span class="tree-shop-price">30 EXP</span>
+                               	</li>
+                            </ul>
+                        </section>
+
+						<!-- 착용 아이템 -->
+                        <section id="shop-accessory" class="tree-shop-panel" data-shop-items="accessory" aria-labelledby="shop-accessory-title" hidden>
+                            <h3 id="shop-accessory-title">착용 아이템 <span>나무에 특별함을</span></h3>
+                            <ul class="tree-shop-products">
+                                <li class="tree-shop-product" data-price="20" th:attr="data-hat=@{/dist/tree/items/hat.png}">
+	                                	<div class="tree-shop-icon tree-shop-icon-accessory"><img th:src="@{/dist/tree/items/hat.png}" alt="" loading="lazy">
+	                                </div>
+	                                <strong class="tree-shop-item-name">모자</strong><span class="tree-shop-price">20 EXP</span>
+                                </li>
+                                <li class="tree-shop-product" data-price="20" th:attr="data-decoration=@{/dist/tree/items/tree-bauble.png}">
+                                		<div class="tree-shop-icon tree-shop-icon-accessory"><img th:src="@{/dist/tree/items/tree-bauble.png}" alt="" loading="lazy">
+                                		</div>
+                                		<strong class="tree-shop-item-name">트리 장식</strong><span class="tree-shop-price">20 EXP</span>
+                                	</li>
+                                <li class="tree-shop-product" data-price="100" th:attr="data-decoration=@{/dist/tree/items/gold-charm.png}">
+                                		<div class="tree-shop-icon tree-shop-icon-gold"><img th:src="@{/dist/tree/items/gold-charm.png}" alt="" loading="lazy">
+                                		</div>
+                                		<strong class="tree-shop-item-name">금 장식</strong><span class="tree-shop-price">100 EXP</span>
+                                	</li>
+                                <li class="tree-shop-product" data-price="50" th:attr="data-decoration=@{/dist/tree/items/silver-charm.png}">
+                                		<div class="tree-shop-icon tree-shop-icon-silver"><img th:src="@{/dist/tree/items/silver-charm.png}" alt="" loading="lazy">
+                                		</div>
+                                		<strong class="tree-shop-item-name">은 장식</strong><span class="tree-shop-price">50 EXP</span>
+                                	</li>
+                            </ul>
+                        </section>
+
+						<!-- 펫 -->
+                        <section id="shop-pet" class="tree-shop-panel" data-shop-items="pet" aria-labelledby="shop-pet-title" hidden>
+                            <h3 id="shop-pet-title">펫 <span>정원의 작은 친구</span></h3>
+                            <ul class="tree-shop-products">
+                                <li class="tree-shop-product" data-price="200"
+   									 th:attr="data-pet=@{/dist/tree/items/dog.png}">
+                                		<div class="tree-shop-icon tree-shop-icon-pet">
+                                			<img th:src="@{/dist/tree/items/dog.png}" alt="" loading="lazy">
+                                		</div>
+                                		<strong class="tree-shop-item-name">강아지</strong>
+                                		<span class="tree-shop-price">200 EXP</span>
+                                	</li>
+                                	
+                                <li class="tree-shop-product" data-price="200"
+   									 th:attr="data-pet=@{/dist/tree/items/turtle.png}">
+                                		<div class="tree-shop-icon tree-shop-icon-pet">
+	                                		<img th:src="@{/dist/tree/items/turtle.png}" alt="" loading="lazy">
+                                		</div>
+                                		<strong class="tree-shop-item-name">거북이</strong>
+                                		<span class="tree-shop-price">200 EXP</span>
+                                	</li>
+                                	
+                                <li class="tree-shop-product" data-price="200"
+   									 th:attr="data-pet=@{/dist/tree/items/cat.png}">
+                                		<div class="tree-shop-icon tree-shop-icon-pet">
+                                			<img th:src="@{/dist/tree/items/cat.png}" alt="" loading="lazy">
+                                		</div>
+                                		<strong class="tree-shop-item-name">고양이</strong>
+                                		<span class="tree-shop-price">200 EXP</span>
+                                	</li>
+                                	
+                                <li class="tree-shop-product" data-price="400"
+   									 th:attr="data-pet=@{/dist/tree/items/quokka.png}">
+                                		<div class="tree-shop-icon tree-shop-icon-quokka">
+                                			<img th:src="@{/dist/tree/items/quokka.png}" alt="" loading="lazy">
+                                		</div><strong class="tree-shop-item-name">쿼카</strong>
+                                		<span class="tree-shop-price">400 EXP</span>
+                                	</li>
+                            </ul>
+                        </section>
+                    </div>
+
+                   <div class="tree-shop-footer">
+                       <span th:text="${shopEnabled ? '워크의 EXP로 상품을 구매하고 나무에 장착할 수 있습니다.' : '상품과 가격을 미리 볼 수 있습니다. 구매와 장착은 나무 5단계부터 가능합니다.'}">상품과 가격을 미리 볼 수 있습니다.</span>
+                   </div>
+                </aside>
+                </div>
+
+                <!-- 성장 단계와 진행률 -->
+                <div class="growth-stages">
+                    <h2>🌳성장 단계🌳</h2>
+                    <ol>
+                        <li th:each="level : ${growthLevels}">
+                            <div class="growth-stage-image">
+                                <img src="/dist/tree/line/seed.png" 
+                                	    th:src="@{${level.treeImagePath}}" alt="" loading="lazy">
+                            </div>
+                            <span th:text="${level.levelName}">씨앗</span>
+                            <span th:text="|누적 ${level.minExp} EXP부터|">누적 0 EXP부터</span>
+                            <span th:if="${level.growthLevelId == growthTree.growthLevelId}"
+      							aria-current="step">현재 단계</span>
+                        </li>
+                    </ol>
+
+                </div>
+
+                <!-- 최근 경험치 획득 내역 -->
+                <div class="growth-history" aria-labelledby="growth-history-title">
+				    <div class="growth-history-heading">
+				        <h2 id="growth-history-title">최근 팀 활동</h2>
+				        <span class="growth-history-badge">활동 기록</span>
+				    </div>
+				
+				    <p class="growth-history-description">
+				        팀원들이 함께 쌓아 온 활동과 경험치를 확인하세요.
+				    </p>
+				
+				    <ul class="growth-history-list" th:unless="${#lists.isEmpty(recentGrowthExpLogs)}">
+				        <li class="growth-history-item"
+				        		th:each="activity : ${recentGrowthExpLogs}"
+				        		th:classappend="${activity.revokedAt != null ? 'is-revoked' : ''}">
+				        
+					        <span class="growth-history-icon" aria-hidden="true">
+					        		<i class="bi bi-activity"></i>
+					        </span>
+					        
+					        <div class="growth-history-detail">
+					        		<strong th:text="${activity.actionName}">활동 내용</strong>
+					        		<p class="growth-history-meta"
+					        		   th:if="${!#strings.isEmpty(activity.projectName)}"
+					        		   th:text="${activity.projectName}">프로젝트명</p>
+					        		<p class="growth-history-meta"
+					               th:text="|${activity.memberName} · ${activity.earnedAt}|">
+					            </p>
+					            <p class="growth-history-revoked-at"
+					               th:if="${activity.revokedAt != null}"
+					               th:text="|보상 회수 일시 ${activity.revokedAt}|">
+					            </p>
+					        </div>
+					        <span class="growth-history-exp"
+					              th:text="${activity.revokedAt == null ? '+' + activity.exp + ' EXP' : activity.exp + ' EXP 회수됨'}">
+					        </span>	        
+				        </li>
+				    </ul>
+				    
+				    <div class="growth-history-empty"
+					     th:if="${#lists.isEmpty(recentGrowthExpLogs)}">
+					    <i class="bi bi-clock-history" aria-hidden="true"></i>
+					    <strong>아직 기록된 팀 활동이 없어요.</strong>
+					    <p>경험치를 얻는 팀 활동을 하면 이곳에 기록됩니다.</p>
+					</div>
+				</div>
+
+            </div>
+        </div>
+    </div>
+</th:block>
+
+<!-- 상점 구매 확인에 사용할 공통 확인창 -->
+<th:block layout:fragment="aside-container">
+    <th:block th:replace="~{common/util/confirm::confirm}"></th:block>
+</th:block>
+
+<th:block layout:fragment="script">
+    <script th:src="@{/dist/tree/growthTree.js}"></script>
+</th:block>
+</html>

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<title>Insert title here</title>
+</head>
+<body>
+	<div th:fragment="content" class="notice-detail">
+		<div class="panel-card">
+			<h2 th:text="${detail.title}"></h2>
+			<div class="notice-meta">
+				<div class="notice-meta-info">
+					<span> 작성자 <b
+						th:text="${detail.member_name != null ? detail.member_name : detail.member_id}"></b></span>
+					<span> 작성일 <b
+						th:text="${#dates.format(detail.created, 'yyyy-MM-dd HH:mm')}"></b></span>
+					<span> 수정일 <b
+						th:text="${detail.updated != null ? #dates.format(detail.updated, 'yyyy-MM-dd HH:mm') : '수정 전'}"></b></span>
+				</div>
+
+				<span class="notice-status"
+					th:classappend="${detail.status == 1 ? 'is-public' : 'is-private'}"
+					th:text="${detail.status == 1 ? '공개' : '비공개'}"> </span>
+			</div>
+			<div class="ql-editor notice-body" th:utext="${detail.content}"></div>
+			
+			<div class="notice-files" th:if="${fileList != null and !fileList.isEmpty()}">
+			    <div class="notice-files-header">
+			        <strong>📄 첨부파일 <span th:text="${fileList.size()}"></span>개</strong>
+
+			        <a class="notice-download-all" th:href="@{/admin/notice/{notice_id}/downloadAll(notice_id=${detail.notice_id})}">
+			            전체 다운로드 ↓
+			        </a>
+			    </div>
+			
+			    <div class="notice-file-item" th:each="file : ${fileList}">
+				    <span class="notice-file-icon">📄</span>
+				    <a class="notice-file-link"
+				       th:href="@{/admin/notice/file/{notice_file_id}/download(notice_file_id=${file.notice_file_id})}"
+				       th:text="${file.original_name}"></a>
+				</div>
+			
+			</div>
+			
+			<div class="notice-actions">
+			    <a th:href="@{/admin/notice}" class="notice-list-btn">목록으로</a>
+			
+			    <div class="notice-action-right">
+			        <a th:href="@{/admin/notice/{id}/edit(id=${detail.notice_id})}" class="btn-sage">수정하기</a>
+			
+			        <form th:action="@{/admin/notice/delete}" method="post">
+			            <input type="hidden" name="notice_id" th:value="${detail.notice_id}">
+			            <button type="submit" class="notice-delete-btn" onclick="return confirm('정말 삭제하시겠습니까?');">삭제하기</button>
+			        </form>
+			    </div>
+			</div>
+
+		</div>
+	</div>
+</body>
+</html>

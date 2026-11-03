@@ -1,0 +1,823 @@
+@charset "UTF-8";
+/* ==========================================================================
+   [Taskwaka] 우측 오버레이 상세 드로어 패널 공통 스타일 (detail_panel.css)
+   ========================================================================== */
+
+.common-detail-panel {
+	position: fixed !important;
+	top: 56px;
+	right: 0;
+	bottom: 0;
+	width: 580px;
+	min-width: 400px;
+	max-width: 82vw;
+	background: #FCFBF8;
+	border-left: 1px solid #E6E0D6;
+	display: flex;
+	flex-direction: column;
+	z-index: 1050;
+	box-shadow: -10px 0 32px rgba(59, 45, 31, 0.14);
+	transform: translateX(104%);
+	transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), visibility 0.25s;
+	visibility: hidden;
+	pointer-events: none;
+}
+
+.common-detail-panel.open {
+	transform: translateX(0);
+	visibility: visible;
+	pointer-events: auto;
+}
+
+.pane-resizer-bar {
+	position: absolute;
+	left: -4px;
+	top: 0;
+	bottom: 0;
+	width: 8px;
+	cursor: col-resize;
+	z-index: 20;
+	background: transparent;
+	transition: background 0.15s;
+}
+.pane-resizer-bar:hover,
+.pane-resizer-bar.resizing {
+	background: rgba(113, 134, 91, 0.45);
+}
+
+.detail-type-chip {
+	display: inline-flex;
+	align-items: center;
+	padding: 2px 8px;
+	border-radius: 999px;
+	font-size: 11px;
+	font-weight: 700;
+	background: #EEF4E6;
+	color: #4F6242;
+	border: 1px solid #C5D6B5;
+}
+.detail-type-chip.subtask-mode {
+	background: #F4EFE8;
+	color: #594331;
+	border-color: #DCD3C6;
+}
+
+/* 상단 액션 버튼 (수정 / 저장 / 취소 / 삭제 / 닫기) */
+.btn-detail-action-edit {
+	padding: 5px 12px;
+	border-radius: 6px;
+	border: 1px solid #C5D6B5;
+	background: #EEF4E6;
+	color: #4F6242;
+	font-size: 12px;
+	font-weight: 700;
+	cursor: pointer;
+	transition: all 0.15s;
+}
+.btn-detail-action-edit:hover {
+	background: #4F6242;
+	color: #FFFFFF;
+	border-color: #4F6242;
+}
+
+.btn-detail-action-save {
+	padding: 5px 12px;
+	border-radius: 6px;
+	border: 1px solid #4F6242;
+	background: #4F6242;
+	color: #FFFFFF;
+	font-size: 12px;
+	font-weight: 700;
+	cursor: pointer;
+	transition: background 0.15s;
+}
+.btn-detail-action-save:hover {
+	background: #3E4E33;
+}
+
+.btn-detail-action-cancel {
+	padding: 5px 10px;
+	border-radius: 6px;
+	border: 1px solid #DCD3C6;
+	background: #FFFFFF;
+	color: #786B5E;
+	font-size: 12px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: all 0.15s;
+}
+.btn-detail-action-cancel:hover {
+	background: #F3EFE8;
+	color: #2B241D;
+}
+
+.btn-detail-top-del {
+	padding: 5px 10px;
+	border-radius: 6px;
+	border: 1px solid #EFC9C5;
+	background: #FDECEB;
+	color: #B84A39;
+	font-size: 12px;
+	font-weight: 700;
+	cursor: pointer;
+	transition: all 0.15s;
+}
+.btn-detail-top-del:hover {
+	background: #B84A39;
+	color: #FFFFFF;
+}
+
+.detail-close-btn {
+	background: transparent;
+	border: none;
+	color: #9E9284;
+	cursor: pointer;
+	font-size: 17px;
+	padding: 4px 8px;
+	border-radius: 6px;
+	line-height: 1;
+	margin-left: 2px;
+}
+.detail-close-btn:hover {
+	background: #ECE6DC;
+	color: #2B241D;
+}
+
+.detail-content-scroll {
+	padding: 22px 26px 40px 26px;
+	overflow-y: auto;
+	flex: 1;
+}
+
+.detail-meta-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 18px;
+	padding-bottom: 14px;
+	border-bottom: 1px solid #EFEAE1;
+}
+
+.detail-author-box {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.detail-avatar-badge {
+	width: 34px;
+	height: 34px;
+	border-radius: 8px;
+	background: #4F6242;
+	color: #fff;
+	font-weight: 700;
+	font-size: 12px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.detail-author-name {
+	font-size: 13.5px;
+	font-weight: 700;
+	color: #2B241D;
+}
+
+.detail-created-date {
+	font-size: 11.5px;
+	color: #9E9284;
+	display: block;
+	margin-top: 2px;
+}
+
+.detail-header-tools {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.readonly-notice-badge {
+	display: inline-flex;
+	align-items: center;
+	padding: 4px 10px;
+	border-radius: 6px;
+	font-size: 11.5px;
+	font-weight: 700;
+	background: #F3EFE8;
+	color: #786B5E;
+	border: 1px solid #E2DBD0;
+}
+
+/* ==========================================================================
+   [핵심] 조회 모드(기본) vs 수정 모드(.is-editing) 필드 스타일 분리
+   ========================================================================== */
+
+/* 1. 제목 필드 */
+.detail-title-row {
+	margin-bottom: 18px;
+}
+
+.detail-task-title-input {
+	font-size: 20px;
+	font-weight: 800;
+	color: #2B241D;
+	border: 1px solid transparent;
+	background: transparent;
+	width: 100%;
+	padding: 4px 0;
+	border-radius: 6px;
+	outline: none;
+	pointer-events: none;
+	cursor: default;
+	transition: all 0.15s;
+}
+
+/* 수정 모드일 때만 제목 입력창 테두리 활성화 */
+.common-detail-panel.is-editing .detail-task-title-input {
+	pointer-events: auto;
+	cursor: text;
+	padding: 6px 10px;
+	background: #FFFFFF;
+	border-color: #DCD3C6;
+}
+.common-detail-panel.is-editing .detail-task-title-input:focus {
+	border-color: #71865B;
+	box-shadow: 0 0 0 2px rgba(113, 134, 91, 0.15);
+}
+
+/* 2. 속성 카드 영역 */
+.detail-props-card {
+	background: #F7F4EE;
+	border-radius: 10px;
+	padding: 14px 18px;
+	margin-bottom: 22px;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	border: 1px solid #E6E0D6;
+}
+
+.detail-prop-row {
+	display: grid;
+	grid-template-columns: 95px 1fr;
+	align-items: center;
+	font-size: 13px;
+	min-height: 28px;
+}
+
+.prop-label {
+	color: #786B5E;
+	font-weight: 600;
+	font-size: 12.5px;
+}
+
+.prop-value-box {
+	display: flex;
+	align-items: center;
+}
+
+/* 상태 배지 (조회 모드에서는 순수 뱃지로만 표시, 수정 모드에선 select로 대체) */
+.badge-status {
+	cursor: default;
+	user-select: none;
+}
+.status-edit-only {
+	display: none;
+}
+.common-detail-panel.is-editing #detailStatusBadge {
+	display: none;
+}
+.common-detail-panel.is-editing .status-edit-only {
+	display: inline-block;
+}
+
+/* 담당자(select), 시작일/마감일(date) - 조회 모드에서는 완전히 일반 글자처럼 표현 */
+.inline-edit-select,
+.inline-edit-date,
+.detail-edit-select {
+	font-family: inherit;
+	font-size: 13.5px;
+	font-weight: 600;
+	color: #2B241D;
+	border: 1px solid transparent;
+	background: transparent;
+	padding: 2px 0;
+	border-radius: 6px;
+	outline: none;
+	pointer-events: none;
+	cursor: default;
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	appearance: none;
+}
+
+/* 조회 모드일 때 달력 아이콘 숨김 */
+.common-detail-panel:not(.is-editing) .inline-edit-date::-webkit-calendar-picker-indicator {
+	display: none;
+	-webkit-appearance: none;
+}
+
+/* disabled 상태에서도 글자색이 흐려지지 않고 선명한 본문 텍스트처럼 보이게 유지 */
+.inline-edit-select:disabled,
+.inline-edit-date:read-only {
+	opacity: 1;
+	color: #2B241D;
+	-webkit-text-fill-color: #2B241D;
+}
+
+/* 수정 모드(.is-editing) 진입 시 입력 폼 테두리 및 컨트롤 복원 */
+.common-detail-panel.is-editing .inline-edit-select,
+.common-detail-panel.is-editing .inline-edit-date,
+.common-detail-panel.is-editing .detail-edit-select {
+	pointer-events: auto;
+	cursor: pointer;
+	background: #FFFFFF;
+	border-color: #DCD3C6;
+	padding: 5px 10px;
+	-webkit-appearance: auto;
+	-moz-appearance: auto;
+	appearance: auto;
+}
+.common-detail-panel.is-editing .inline-edit-select:focus,
+.common-detail-panel.is-editing .inline-edit-date:focus,
+.common-detail-panel.is-editing .detail-edit-select:focus {
+	border-color: #71865B;
+}
+
+/* 3. 진척도 영역 (조회 모드에서는 퍼센트 글자만 표시, 수정 모드에서 슬라이더 표시) */
+.detail-progress-control {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.detail-progress-control input[type="range"] {
+	display: none;
+	flex: 1;
+	accent-color: #4F6242;
+	cursor: pointer;
+}
+
+.common-detail-panel.is-editing .detail-progress-control input[type="range"] {
+	display: block;
+}
+
+.progress-val-text {
+	font-size: 13.5px;
+	font-weight: 700;
+	color: #4F6242;
+	min-width: 38px;
+	text-align: left;
+}
+.common-detail-panel.is-editing .progress-val-text {
+	text-align: right;
+}
+
+/* 4. 상세 내용 영역 (조회 모드에서는 테두리/배경 없는 일반 본문 단락처럼 표시) */
+.detail-section-block {
+	margin-bottom: 24px;
+}
+
+.detail-block-title {
+	font-size: 13px;
+	font-weight: 700;
+	color: #594331;
+	margin-bottom: 8px;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.detail-desc-textarea {
+	width: 100%;
+	min-height: 80px;
+	background: transparent;
+	border: 1px solid transparent;
+	border-radius: 8px;
+	padding: 4px 2px;
+	color: #2B241D;
+	font-size: 13.5px;
+	line-height: 1.65;
+	resize: none;
+	outline: none;
+	font-family: inherit;
+	pointer-events: none;
+	cursor: default;
+	transition: all 0.15s;
+}
+
+/* 수정 모드 진입 시에만 상세 내용 텍스트박스 테두리/리사이즈 활성화 */
+.common-detail-panel.is-editing .detail-desc-textarea {
+	min-height: 120px;
+	background: #FFFFFF;
+	border-color: #E6E0D6;
+	padding: 12px 14px;
+	resize: vertical;
+	pointer-events: auto;
+	cursor: text;
+}
+.common-detail-panel.is-editing .detail-desc-textarea:focus {
+	border-color: #71865B;
+	box-shadow: 0 0 0 2px rgba(113, 134, 91, 0.12);
+}
+
+/* ==========================================================================
+   5. 첨부파일 영역 (조회 모드: 업로드된 파일 목록만 표시 / 수정 모드: #fileDropzone 표시)
+   ========================================================================== */
+.file-list-box {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.empty-attached-msg {
+	padding: 10px 12px;
+	font-size: 12.5px;
+	color: #9E9284;
+	background: #F7F4EE;
+	border: 1px solid #E6E0D6;
+	border-radius: 8px;
+}
+
+.attached-file-item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	background: #FFFFFF;
+	border: 1px solid #E6E0D6;
+	padding: 8px 12px;
+	border-radius: 6px;
+	font-size: 12.5px;
+}
+
+.attached-file-link {
+	color: #2B241D;
+	text-decoration: none;
+	font-weight: 600;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.attached-file-link:hover {
+	color: #4F6242;
+	text-decoration: underline;
+}
+
+/* 평소(조회 모드)에는 기존 파일 삭제 버튼 숨김, 수정 모드에서만 노출 */
+.btn-del-existing-file {
+	display: none;
+	border: none;
+	background: none;
+	color: #B84A39;
+	cursor: pointer;
+	font-size: 12px;
+	font-weight: 600;
+	padding: 2px 6px;
+}
+.common-detail-panel.is-editing .btn-del-existing-file {
+	display: inline-block;
+}
+
+/* 평소(조회 모드)에는 #fileDropzone 숨김, 수정 모드(.is-editing)일 때만 노출 */
+.detail-file-dropzone {
+	display: none;
+	border: 1px dashed #D5CBBF;
+	background: #F7F4EE;
+	border-radius: 8px;
+	padding: 12px 14px;
+	margin-top: 8px;
+}
+.common-detail-panel.is-editing .detail-file-dropzone {
+	display: block;
+}
+
+.file-upload-trigger-row.drag-area {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	cursor: pointer;
+}
+
+.btn-upload-attach {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	background: #FFFFFF;
+	border: 1px solid #DCD3C6;
+	padding: 5px 11px;
+	border-radius: 6px;
+	font-size: 12px;
+	font-weight: 600;
+	color: #594331;
+	cursor: pointer;
+}
+.btn-upload-attach:hover {
+	background: #EEF4E6;
+	border-color: #71865B;
+	color: #4F6242;
+}
+
+/* file-upload.js가 동적으로 생성하는 .file-upload-list 및 .file-item 스타일 */
+.detail-file-dropzone .file-upload-list {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	margin-top: 8px;
+}
+.detail-file-dropzone .file-upload-list:empty {
+	margin-top: 0;
+}
+.detail-file-dropzone .file-item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	background: #FFFFFF;
+	border: 1px solid #DCD3C6;
+	padding: 6px 10px;
+	border-radius: 6px;
+	font-size: 12px;
+	color: #2B241D;
+}
+.detail-file-dropzone .file-item .file-name {
+	font-weight: 600;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.detail-file-dropzone .file-item i {
+	color: #B84A39;
+	cursor: pointer;
+	font-size: 13px;
+	padding: 2px 4px;
+}
+
+/* 하위업무 목록 섹션 */
+.detail-subtasks-section {
+	border-top: 1px solid #E6E0D6;
+	padding-top: 20px;
+}
+
+.detail-section-Header-line {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 12px;
+}
+
+.detail-section-title {
+	font-size: 13.5px;
+	font-weight: 700;
+	color: #2B241D;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.btn-detail-add-subtask {
+	background: #FFFFFF;
+	border: 1px solid #DCD3C6;
+	color: #594331;
+	padding: 5px 11px;
+	border-radius: 6px;
+	font-size: 12px;
+	font-weight: 600;
+	cursor: pointer;
+}
+.btn-detail-add-subtask:hover {
+	border-color: #71865B;
+	color: #4F6242;
+	background: #EEF4E6;
+}
+
+.detail-subtask-box {
+	background: #F7F4EE;
+	border: 1px solid #E6E0D6;
+	border-radius: 8px;
+	overflow: hidden;
+}
+
+.detail-subtask-item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 10px 14px;
+	border-bottom: 1px solid #EAE4DA;
+	font-size: 13px;
+	background: #FFFFFF;
+	transition: background 0.12s;
+}
+.detail-subtask-item:last-child {
+	border-bottom: none;
+}
+.detail-subtask-item:hover {
+	background: #F4F7F0;
+}
+
+.detail-subtask-left {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+	flex: 1;
+}
+
+/* ==========================================================================
+   일일 업무 보고서 (Daily Report) 섹션 (인라인 클래스와 분리하여 항상 입력 폼 유지)
+   ========================================================================== */
+.detail-daily-report-section {
+	border-top: 1px solid #E6E0D6;
+	padding-top: 20px;
+	margin-top: 10px;
+}
+
+.daily-report-form-card {
+	background: #F7F4EE;
+	border: 1px solid #DCD3C6;
+	border-radius: 10px;
+	padding: 14px 16px;
+	margin-bottom: 16px;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.report-form-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	font-size: 13px;
+	font-weight: 700;
+	color: #4F6242;
+}
+
+.btn-cancel-edit-report {
+	padding: 3px 8px;
+	font-size: 11px;
+	border-radius: 4px;
+	border: 1px solid #DCD3C6;
+	background: #FFFFFF;
+	color: #786B5E;
+	cursor: pointer;
+}
+
+.report-form-row {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	flex-wrap: wrap;
+}
+
+.report-field-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 12.5px;
+	font-weight: 600;
+	color: #594331;
+}
+
+.report-form-date,
+.report-form-input {
+	font-family: inherit;
+	font-size: 12.5px;
+	color: #2B241D;
+	background: #FFFFFF;
+	border: 1px solid #DCD3C6;
+	border-radius: 6px;
+	padding: 4px 8px;
+	outline: none;
+}
+
+.report-form-textarea {
+	width: 100%;
+	min-height: 80px;
+	background: #FFFFFF;
+	border: 1px solid #DCD3C6;
+	border-radius: 8px;
+	padding: 10px 12px;
+	color: #2B241D;
+	font-size: 13px;
+	line-height: 1.5;
+	resize: vertical;
+	outline: none;
+	font-family: inherit;
+}
+
+.btn-submit-daily-report {
+	padding: 7px 16px;
+	border-radius: 6px;
+	border: none;
+	background: #4F6242;
+	color: #FFFFFF;
+	font-size: 12.5px;
+	font-weight: 700;
+	cursor: pointer;
+	transition: background 0.15s;
+}
+.btn-submit-daily-report:hover {
+	background: #3E4E33;
+}
+
+.daily-report-list-box {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.daily-report-item-card {
+	background: #FFFFFF;
+	border: 1px solid #E6E0D6;
+	border-radius: 8px;
+	padding: 12px 14px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.daily-report-item-top {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+}
+
+.report-meta-left {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 12.5px;
+}
+
+.report-date-badge {
+	font-weight: 700;
+	color: #2B241D;
+	background: #F3EFE8;
+	padding: 2px 8px;
+	border-radius: 4px;
+}
+
+.report-progress-chip {
+	font-size: 11.5px;
+	font-weight: 700;
+	color: #4F6242;
+	background: #EEF4E6;
+	padding: 2px 7px;
+	border-radius: 4px;
+}
+
+.report-review-status {
+	font-size: 11px;
+	font-weight: 700;
+	padding: 2px 7px;
+	border-radius: 4px;
+}
+.report-review-status.wait {
+	background: #F4EFE8;
+	color: #786B5E;
+}
+.report-review-status.approved {
+	background: #E8F5E9;
+	color: #2E7D32;
+}
+.report-review-status.rejected {
+	background: #FDECEB;
+	color: #C62828;
+}
+
+.daily-report-content-body {
+	font-size: 13px;
+	color: #2B241D;
+	line-height: 1.55;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.daily-report-actions {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.btn-report-mini {
+	padding: 3px 8px;
+	font-size: 11.5px;
+	font-weight: 600;
+	border-radius: 4px;
+	border: 1px solid #DCD3C6;
+	background: #FFFFFF;
+	color: #594331;
+	cursor: pointer;
+}
+.btn-report-mini:hover {
+	background: #F3EFE8;
+}
+.btn-report-mini.del {
+	color: #B84A39;
+	border-color: #EFC9C5;
+}
+.btn-report-mini.del:hover {
+	background: #FDECEB;
+}

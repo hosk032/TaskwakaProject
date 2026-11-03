@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+	xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/layout3}">
+
+<th:block layout:fragment="css">
+	 <link rel="stylesheet" th:href="@{/dist/css/home.css}">
+	 <link rel="stylesheet" th:href="@{/dist/css/manage/meetings.css}">
+</th:block>
+  	  
+<th:block layout:fragment="content">
+	<div class="home-layout">
+	
+		<nav th:replace="~{layout/homeSidebar::homeSidebar('meetings')}"></nav>
+			
+		<div class="section meetings-page">
+			<div class="page-content meetings-content">
+
+				<div class="meetings-toolbar">
+				    <h2 class="meetings-title">회의록 목록</h2>
+				
+					<form class="meetings-search" role="search" aria-label="회의록 검색"
+					      method="get" th:action="@{/{domainKey}/home/meetings(domainKey=${domainKey})}">
+					    <i class="bi bi-search" aria-hidden="true"></i>
+					    		<label for="meetingSearchKeyword" class="visually-hidden">
+					       		회의록 검색어
+					    		</label>
+					    		
+					    		<input type="search" id="meetingSearchKeyword" name="kwd" th:value="${kwd}" placeholder="회의록 검색">
+					    		
+						    <button type="submit" class="meetings-search-button">
+						        검색
+						    </button>
+					</form>
+				
+				    <a th:href="@{/{domainKey}/home/meetingsCreate(domainKey=${domainKey})}" class="meetings-write-button">
+				        <i class="bi bi-plus-lg" aria-hidden="true"></i>
+				        회의록 작성
+				    </a>
+				</div>
+
+				<div class="meetings-table-wrap">
+					<table class="meetings-table">
+						<thead>
+							<tr>
+								<th scope="col">회의 제목</th>
+								<th scope="col" class="meeting-date">작성일</th>
+								<th scope="col" class="meeting-writer">작성자</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr th:each="meeting: ${meetingMinutes}">
+								<td>
+									<p class="meeting-title">
+										<a th:href="@{/{domainKey}/home/meetingsDetail(domainKey=${domainKey},
+								            meetingMinuteId=${meeting.meetingMinuteId})}" th:text="${meeting.title}">
+								        </a>
+							        </p>
+							        <!-- th:with : 임시 변수 -->
+									<p class="meeting-summary" 
+									   th:with="summaryText=${#strings.trim(#strings.replace(@myUtil.removeHtmlTag(meeting.summary), '&amp;nbsp;', ' '))}"
+							           th:text="${#strings.isEmpty(summaryText) ? '본문은 상세 화면에서 확인해 주세요.' : summaryText}"></p>
+								</td>
+								
+								<td class="meeting-date" th:text="${meeting.createdDate}"></td>
+								<td class="meeting-writer" th:text="${meeting.authorName}"></td>
+							</tr>
+							
+							<tr th:if="${#lists.isEmpty(meetingMinutes)}">
+							    <td colspan="3">
+							        <p class="meeting-summary"
+							           th:text="${#strings.isEmpty(kwd) ? '등록된 회의록이 없습니다.' : '검색 결과가 없습니다.'}"></p>
+							    </td>
+							</tr>
+							
+						</tbody>
+						
+					</table>
+				</div>
+				
+				<nav class="meetings-pagination" aria-label="회의록 페이지 이동" 
+					 th:if="${!#strings.isEmpty(paging)}" th:utext="${paging}">
+				</nav>
+			</div>
+		
+		</div>
+	</div>
+	
+</th:block>
+ 
+<th:block layout:fragment="script">
+</th:block> 
+
+</html>

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+	<div th:fragment="content">
+	<link rel="stylesheet" type="text/css" href="/dist/css/project/task.css">
+		<div class="task-split-view-wrapper" id="taskSplitViewWrapper">
+			<div class="task-tree-page" id="taskTreeMainPage">
+				<div class="task-scroll-wrapper">
+					<ul class="task-grid-header task-grid-columns">
+						<li>업무 / 하위업무명</li>
+						<li>상태</li>
+						<li>담당자</li>
+						<li>시작일</li>
+						<li>마감일</li>
+						<li>진척도</li>
+						<li>등록일</li>
+						<li>수정일</li>
+					</ul>
+
+					<div class="task-box-inner">
+						<ul class="task-tree-list" id="mainTaskList">
+							<th:block th:if="${tasks != null}">
+								<th:block th:each="task : ${tasks}">
+									<li th:replace="~{project/fragments/task_items :: mainTaskItem}"></li>
+								</th:block>
+							</th:block>
+						</ul>
+					</div>
+				</div>
+			</div>
+
+			<!-- 공통 우측 상세 패널 Include -->
+			<aside th:replace="~{project/fragments/detail_panel :: detailPanel}"></aside>
+		</div>
+		
+		<script th:inline="javascript">
+			/*<![CDATA[*/
+			const currentDomainKey = /*[[${domainKey}]]*/ 'apple';
+			const currentProjectId = /*[[${projectId}]]*/ 1;
+			const currentProjectMemberId = /*[[${currentProjectMemberId}]]*/ 1;
+			/*]]>*/
+		</script>
+		<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>	
+		<script type="text/javascript" src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>
+		<script type="text/javascript" th:src="@{/dist/vendor/perfect-scrollbar/perfect-scrollbar.min.js}"></script>
+	</div>
+</body>
+</html>

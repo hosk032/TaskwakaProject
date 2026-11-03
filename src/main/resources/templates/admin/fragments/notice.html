@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+	<div th:fragment="content" class="notice-page">
+		<div class="panel-card">
+			<div class="notice-header">
+				<div class="panel-card-title">등록된 전체 공지사항 목록</div>
+				<a th:href="@{/admin/notice/write}" class="btn-sage"> 공지사항 등록 </a>
+			</div>
+
+			<form class="notice-search" th:action="@{/admin/notice}" method="get">
+				<input name="keyword" th:value="${keyword}" class="warm-input"
+					placeholder="제목으로 검색">
+				<button type="submit" class="btn-sage">검색</button>
+			</form>
+			<table class="warm-table notice-table">
+				<thead>
+					<tr>
+						<th>공지 제목</th>
+						<th style="width: 120px;">작성자</th>
+						<th style="width: 120px;">작성일</th>
+						<th style="width: 120px;">첨부파일</th>
+						<th style="width: 120px;">공개 상태</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr th:each="notice : ${noticeList}">
+						<td>
+						    <a th:href="@{/admin/notice/{id}(id=${notice.notice_id})}" class="notice-title-link">
+						        <span class="notice-title-text" th:text="${notice.title}"></span>
+						        <span class="notice-new-badge" th:if="${notice.is_new == 1}">NEW</span>
+						    </a>
+						</td>
+						<td th:text="${notice.name}"></td>
+						<td th:text="${#dates.format(notice.created, 'yyyy-MM-dd')}"></td>
+						<td>
+							<span th:if="${notice.file_count > 0}" th:text="${notice.file_count + '개'}"></span>
+							<span th:if="${notice.file_count == 0}">-</span>
+						</td>
+						<td th:text="${notice.status == 1 ? '공개' : '비공개'}"></td>
+					</tr>
+					
+					<tr th:if="${noticeList == null or #lists.isEmpty(noticeList)}">
+					    <td colspan="5" style="text-align: center; padding: 35px 0; color: #888;">
+					        검색 결과가 없습니다.
+					    </td>
+					</tr>
+				</tbody>
+			</table>
+			<div class="notice-pagination" th:utext="${paging}"></div>
+		</div>
+	</div>
+</body>
+</html>

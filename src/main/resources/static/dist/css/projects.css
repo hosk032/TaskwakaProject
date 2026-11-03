@@ -1,0 +1,354 @@
+@charset "UTF-8";
+
+/* 페이지 제목 */
+.project-heading {
+    margin-bottom: 24px;
+}
+
+.project-heading .project-title {
+    margin: 0;
+    color: #594331;
+    font-family: inherit;
+    font-size: 26px;
+    font-weight: 700;
+}
+
+.project-heading .project-description {
+    margin: 8px 0 0;
+    color: #786B5E;
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+/* 카드 너비 */
+.project-menu {
+    display: grid;
+    grid-template-columns: minmax(0, 360px);
+    gap: 24px;
+    align-items: start;
+}
+
+/* 프로젝트 목록 카드 */
+.project-menu .project-card {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    min-width: 0;
+    min-height: 320px;
+    padding: 24px;
+    border: 1px solid #E8E2D9;
+    border-radius: 18px;
+    background: #FFFFFF;
+    color: #594331;
+    box-shadow: 0 4px 14px rgba(89, 67, 49, 0.05);
+    font: inherit;
+    text-align: left;
+}
+
+/* 카드 제목과 설명 */
+.project-menu .project-card-title {
+    margin-bottom: 10px;
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.4;
+}
+
+.project-menu .project-card-description {
+    margin-bottom: 24px;
+    color: #786B5E;
+    font-size: 14px;
+    line-height: 1.7;
+    word-break: keep-all;
+}
+
+/* 개별 프로젝트 */
+.project-menu .project-item {
+    display: block;
+    padding: 13px 14px;
+    border: 1px solid #E1E8D9;
+    border-radius: 10px;
+    background: #EEF4E6;
+    color: #4F6242;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+.project-menu .project-item + .project-item {
+    margin-top: 10px;
+}
+
+/* 카드 전체를 버튼 또는 링크로 사용 */
+.project-menu :is(button, a).project-card {
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.project-menu :is(button, a).project-card:hover {
+    border-color: #B6C6A6;
+    box-shadow: 0 6px 20px rgba(89, 67, 49, 0.08);
+}
+
+.project-menu :is(button, a).project-card:focus-visible {
+    outline: 2px solid #71865B;
+    outline-offset: 3px;
+}
+/* 제목을 제외한 공간을 카드 영역으로 사용 */
+.home-layout > .dashboard-section {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: 20px 24px;
+}
+
+.dashboard-section .page-heading {
+    flex-shrink: 0;
+    margin-bottom: 16px;
+}
+
+/* 본문 너비와 남은 높이를 2×2로 나눔 */
+.dashboard-section .dashboard-menu {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    align-items: stretch;
+}
+
+/* 카드를 감싸는 영역 */
+.dashboard-section .dashboard-menu > .project-menu,
+.dashboard-section .dashboard-menu > .calendar-menu,
+.dashboard-section .dashboard-menu > .growth-tree-menu {
+    display: flex;
+    min-width: 0;
+    min-height: 0;
+    grid-column: auto;
+}
+
+/* 네 카드의 고정 최소 높이 해제 */
+.dashboard-section .work-card,
+.dashboard-section .project-card,
+.dashboard-section .calendar-card,
+.dashboard-section .growth-tree-card {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    padding: 18px;
+    overflow-y: auto;
+}
+
+/* 카드 제목 */
+.dashboard-section .work-card-title,
+.dashboard-section .project-card-title,
+.dashboard-section .calendar-card-title,
+.dashboard-section .growth-tree-card-title {
+    flex-shrink: 0;
+    margin-bottom: 8px;
+    font-size: 18px;
+}
+
+/* 설명 간격 축소 */
+.dashboard-section .work-card-description,
+.dashboard-section .project-card-description,
+.dashboard-section .calendar-card-description,
+.dashboard-section .growth-tree-card-description {
+    flex-shrink: 0;
+    margin-bottom: 12px;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+/* 미리보기 영역도 카드 높이에 맞춤 */
+.dashboard-section .calendar-preview,
+.dashboard-section .growth-tree-preview {
+    min-height: 64px;
+    padding: 12px;
+}
+
+.home-layout > .section > .project-menu {
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.home-layout .project-menu > .project-card-view {
+    display: block;
+    min-height: 0;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid #E8E2D9;
+    border-radius: 18px;
+    background: #FFFFFF;
+    box-shadow: 0 4px 18px rgba(89, 67, 49, 0.03);
+}
+
+.home-layout .project-card-view > .project-card-title {
+    display: block;
+    margin: 0;
+    padding: 22px 26px 6px;
+    color: #594331;
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.4;
+}
+
+.home-layout .project-card-view > .project-card-description {
+    display: block;
+    margin: 0;
+    padding: 0 26px 22px;
+    border-bottom: 1px solid #EEE8E0;
+    color: #786B5E;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.home-layout .project-card-view > .project-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 130px 260px 130px;
+    align-items: center;
+    gap: 20px;
+    min-width: 0;
+    min-height: 0;
+    margin: 0;
+    padding: 20px 26px;
+    border: 0;
+    border-bottom: 1px solid #F0EBE4;
+    border-radius: 0;
+    background: #FFFFFF;
+    color: #665747;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.6;
+    box-shadow: none;
+}
+
+.home-layout .project-card-view > .project-item:last-child {
+    border-bottom: 0;
+}
+
+.home-layout .project-card-view > .project-item:hover {
+    background: #FCFCF8;
+}
+
+.home-layout .project-card-view > .project-item > div {
+    min-width: 0;
+}
+
+.home-layout .project-card-view > .project-item > div:first-child {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    color: #594331;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.home-layout .project-card-view > .project-item > div:first-child > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.home-layout .project-card-view > .project-item > div:nth-child(2) {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #786B5E;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.home-layout .project-card-view > .project-item .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 10px;
+    border: 1px solid #DDE7D2;
+    border-radius: 6px;
+    background: #EEF4E6;
+    color: #536B40;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.5;
+    text-decoration: none;
+    box-shadow: none;
+}
+
+.home-layout .project-card-view > .project-item .btn:hover {
+    border-color: #BDCEA9;
+    background: #E2EDD6;
+    color: #3E562D;
+}
+
+.home-layout .project-card-view > .project-item .btn:focus-visible {
+    outline: 2px solid #71865B;
+    outline-offset: 3px;
+}
+
+.home-layout .project-card-view > .project-item > div:nth-child(3) {
+    color: #786B5E;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+}
+
+.home-layout .project-card-view > .project-item > div:nth-child(3) > span {
+    white-space: nowrap;
+}
+
+.home-layout .project-card-view > .project-item > div:last-child {
+    display: flex;
+    align-items: baseline;
+    justify-content: flex-end;
+    gap: 8px;
+    color: #786B5E;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.home-layout .project-card-view > .project-item > div:last-child > span {
+    color: #536B40;
+    font-size: 16px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.home-layout .project-card-view > .project-item > div:last-child > span:not(:empty)::after {
+    content: "%";
+    margin-left: 2px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.home-layout .project-card-view > p {
+    margin: 0;
+    padding: 44px 26px;
+    color: #8B7E71;
+    font-size: 14px;
+    text-align: center;
+}
+
+.home-layout > .section > .project-heading {
+    margin-bottom: 24px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+
+.home-layout > .section > .project-heading .project-title {
+    margin: 0;
+    color: #594331;
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.home-layout > .section > .project-heading .project-description {
+    margin: 10px 0 0;
+    color: #786B5E;
+    font-size: 14px;
+    line-height: 1.7;
+}
+

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/layout3}">
+
+<th:block layout:fragment="css">
+    <link rel="stylesheet" th:href="@{/dist/css/home.css}">
+    <link rel="stylesheet" th:href="@{/dist/css/manage/manage.css}">
+    <link rel="stylesheet" th:href="@{/dist/css/page-shell.css}">
+    <link rel="stylesheet" th:href="@{/dist/css/noticeDetail.css}">
+</th:block>
+
+<th:block layout:fragment="content">
+    <div class="home-layout manage-layout notice-detail-layout">
+        <nav th:replace="~{layout/homeSidebar::homeSidebar('notice')}"></nav>
+
+        <div class="section shell-section">
+            <div class="page-heading">
+                <h1 class="page-title">공지사항 상세</h1>
+                <p class="page-description">공지사항의 내용을 확인하세요.</p>
+            </div>
+
+            <div class="shell-content">
+                <h2 th:text="${notice.title}">공지 제목</h2>
+                <p>
+                    작성자:
+                    <span th:text="${notice.authorName}">작성자</span>
+                </p>
+                <p>
+                    등록일:
+                    <span th:text="${notice.createdAt}">등록일</span>
+                </p>
+                <p>
+                    조회수:
+                    <span th:text="${notice.viewCount}">0</span>
+                </p>
+                <hr>
+                
+               <div th:utext="${notice.content}" style="white-space: pre-wrap;">공지 본문</div>
+
+				<p class="notice-attachments">
+				    첨부파일
+				    <span th:if="${#lists.isEmpty(noticeFile)}">첨부파일이 없습니다.</span>
+				    <a th:each="file : ${noticeFile}" th:text="${file.originalName}"
+				       th:href="@{/{domainKey}/home/noticeFileDownload(domainKey=${domainKey}, 
+				       noticeId=${notice.noticeId}, noticeFileId=${file.noticeFileId})}">파일이름</a>
+				</p>
+				
+				<p class="notice-navigation">이전글:
+					<a th:if="${prevNotice != null}"
+					   th:href="@{/{domainKey}/home/noticeDetail(domainKey=${domainKey}, noticeId=${prevNotice.noticeId})}"
+					   th:text="${prevNotice.title}">이전글 제목</a>
+					<span th:if="${prevNotice == null}">이전글이 없습니다.</span>
+				</p>
+				
+				<p class="notice-navigation">다음글:
+					<a th:if="${nextNotice != null}"
+					   th:href="@{/{domainKey}/home/noticeDetail(domainKey=${domainKey}, noticeId=${nextNotice.noticeId})}"
+					   th:text="${nextNotice.title}">다음글 제목</a>
+					<span th:if="${nextNotice == null}">다음글이 없습니다.</span>
+				</p>
+            </div>
+
+			<div class="shell-actions">
+			    <a th:href="@{/{domainKey}/home/notice(domainKey=${domainKey})}"
+			       class="shell-action notice-list-action">
+			        목록으로
+			    </a>
+			
+			   	<a th:if="${manageWorkspaceRole == 50 and notice.memberId == workspace.memberId}"
+			       th:href="@{/{domainKey}/home/noticeEdit(domainKey=${domainKey}, noticeId=${notice.noticeId})}"
+			       class="shell-action shell-action-primary">
+			        수정
+			    </a>
+			
+				<form th:if="${manageWorkspaceRole == 70 or (manageWorkspaceRole == 50 and notice.memberId == workspace.memberId)}"
+				      method="post"
+				      th:action="@{/{domainKey}/home/noticeDelete(domainKey=${domainKey})}"
+				      onsubmit="return confirm('공지를 삭제하시겠습니까 ?');">
+				
+				<input type="hidden" name="noticeId" th:value="${notice.noticeId}">
+				
+				<button type="submit" class="shell-action">삭제</button>
+				</form>
+			</div>
+
+
+        </div>
+    </div>
+</th:block>
+
+<th:block layout:fragment="script"></th:block>
+</html>

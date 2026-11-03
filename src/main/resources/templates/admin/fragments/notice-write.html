@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<title>Insert title here</title>
+</head>
+<body>
+	<div th:fragment="content" class="notice-form-page">
+		<div class="panel-card">
+
+			<div class="panel-card-title">공지사항 등록</div>
+
+			<form id="noticeWriteForm" th:action="@{/admin/notice}" method="post" enctype="multipart/form-data">
+
+				<div class="notice-form-row">
+					<div class="notice-field">
+						<label>공지 제목 *</label> <input type="text" name="title" class="warm-input" placeholder="공지사항 제목을 입력하세요" required>
+					</div>
+
+					<div class="notice-field">
+						<label>공개 여부 *</label> <select name="status" class="warm-select">
+							<option value="1">공개</option>
+							<option value="0">비공개</option>
+						</select>
+					</div>
+				</div>
+
+				<div class="notice-field">
+					<label>공지 내용 *</label>
+					<div id="editor"></div>
+					<input type="hidden" name="content" id="content">
+				</div>
+				
+				<div class="notice-field notice-upload">
+				    <label>첨부파일</label>
+				    <div class="notice-upload-box">
+				        <div class="notice-upload-description">📄 등록할 파일을 선택해 주세요.</div>
+				        <input type="file" id="noticeWriteFiles" name="files" multiple onchange="showNoticeWriteFiles()">
+				        <div id="noticeWriteFileList" class="notice-upload-list"></div>
+				    </div>
+				</div>
+
+				<div class="notice-form-actions">
+					<a th:href="@{/admin/notice}" class="notice-list-btn">취소</a>
+					<button type="submit" class="btn-sage">공지사항 등록</button>
+				</div>
+
+			</form>
+		</div>
+	</div>
+	
+<th:block th:fragment="script">
+    <script>
+        document.getElementById('noticeWriteForm')
+            .addEventListener('submit', function() {
+                document.getElementById('content').value =
+                    document.querySelector('#editor .ql-editor').innerHTML;
+            });
+    </script>
+</th:block>	
+
+<th:block th:fragment="script">
+    <script>
+        document.getElementById('noticeWriteForm')
+            .addEventListener('submit', function() {
+                document.getElementById('content').value =
+                    document.querySelector('#editor .ql-editor').innerHTML;
+            });
+
+        function showNoticeWriteFiles() {
+            const input = document.getElementById('noticeWriteFiles');
+            const fileList = document.getElementById('noticeWriteFileList');
+
+            fileList.innerHTML = '';
+
+            Array.from(input.files).forEach(function(file, index) {
+                const item = document.createElement('div');
+                item.className = 'notice-upload-item';
+
+                const name = document.createElement('span');
+                name.className = 'notice-upload-name';
+                name.textContent = file.name;
+
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'notice-upload-remove';
+                button.textContent = '삭제';
+                button.onclick = function() {
+                    removeNoticeWriteFile(index);
+                };
+
+                item.appendChild(name);
+                item.appendChild(button);
+                fileList.appendChild(item);
+            });
+        }
+
+        function removeNoticeWriteFile(index) {
+            const input = document.getElementById('noticeWriteFiles');
+            const dataTransfer = new DataTransfer();
+
+            Array.from(input.files).forEach(function(file, i) {
+                if (i !== index) {
+                    dataTransfer.items.add(file);
+                }
+            });
+
+            input.files = dataTransfer.files;
+            showNoticeWriteFiles();
+        }
+    </script>
+</th:block>
+	
+</body>
+</html>

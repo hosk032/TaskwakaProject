@@ -1,0 +1,174 @@
+@charset "UTF-8";
+
+.team-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+    height: 64px;
+    padding: 0 24px;
+    background: #FFFFFF;
+    border-bottom: 1px solid #E8E2D9;
+    color: #594331;
+}
+
+.team-header-left,
+.team-header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.team-header-left {
+    min-width: 0;
+}
+
+
+.team-logo {
+    flex-shrink: 0;
+    color: #594331;
+    font-family: "Segoe UI", sans-serif;
+    font-size: 23px;
+    font-weight: 700;
+    letter-spacing: -0.8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+}
+
+/* 페이지별 전역 CSS의 글꼴 지정 영향을 방지 */
+.team-logo > span {
+    font-family: inherit;
+    font-weight: inherit;
+    text-decoration: none;
+}
+
+.team-logo:hover,
+.team-logo:focus {
+    color: #72563E;
+    text-decoration: none;
+}
+
+
+.team-logo:hover,
+.team-logo:focus {
+    color: #72563E;
+    text-decoration: none;
+}
+
+.team-logo-image {
+    width: 56px;
+    height: 56px;
+    flex-shrink: 0;
+    border-radius: 0;
+    object-fit: contain;
+    border: 0;
+    background: transparent;
+}
+
+.team-logo:hover {
+    color: #72563E;
+}
+
+.team-name {
+    padding: 6px 12px;
+    border-radius: 8px;
+    background: #EEF4E6;
+    color: #4F6242;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.team-header-right {
+    flex-shrink: 0;
+    gap: 8px;
+}
+
+/* 프로필/워크챗/알림 버튼은 header-profile.css에서 관리합니다.
+   기본 버튼 규칙은 별도 스타일이 없는 직계 버튼에만 적용합니다. */
+.team-header-right > button:not(.header-action-button) {
+    padding: 8px 12px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #594331;
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.team-header-right > button:not(.header-action-button):hover {
+    background: #F7F3EE;
+}
+
+/* 기존 원형 프로필 버튼 스타일은 제거했습니다.
+   현재 둥근 사각형 아바타와 이름은 header-profile.css가 담당합니다. */
+
+.team-header a:focus-visible,
+.team-header button:focus-visible {
+    outline: 2px solid #71865B;
+    outline-offset: 3px;
+}
+
+.site-header {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background: #FFFFFF;
+}
+
+
+
+.profile-dropdown {
+    position: relative;
+}
+
+.team-profile {
+    cursor: pointer;
+}
+
+.profile-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 160px;
+    background: #fff;
+    border-radius: 8px;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.profile-menu[hidden] {
+    display: none;
+}
+
+.profile-menu a,
+.profile-menu .logout-button {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 14px;
+    text-align: left;
+    text-decoration: none;
+    color: inherit;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+.profile-menu a:hover,
+.profile-menu .logout-button:hover {
+    background: #f3f4f6;
+}
+
+.profile-menu-divider {
+    height: 1px;
+    background: #e5e7eb;
+    margin: 4px 0;
+}
+

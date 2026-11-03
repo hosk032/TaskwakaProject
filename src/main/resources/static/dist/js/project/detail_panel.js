@@ -1,0 +1,1014 @@
+/**
+ * [Taskwaka] 공통 우측 오버레이 상세 드로어 패널 스크립트 (detail_panel.js)
+ * - 기본 조회 모드(일반 텍스트 형태) + [수정] 버튼 클릭 시에만 수정 모드(.is-editing) 전환
+ * - 하위업무 담당자 전용 일일 보고서(Daily Report) CRUD 지원
+ * - 업무 목록 탭(.task-tr / .subtask-tr) 및 간트차트 탭(.gantt-tree-row) 양방향 동기화 지원
+ */
+
+let currentEntityType = 'TASK'; // 'TASK' | 'SUB_TASK'
+let currentOpenTaskId = null;
+let currentOpenSubTaskId = null;
+let currentDetailRowElem = null;
+let currentDetailStatus = 0;
+let canEditCurrentSubTask = false;
+let detailViewVersion = 0;
+
+// 수정 취소 시 원래 값 복원을 위한 스냅샷 객체
+let originalDetailSnapshot = null;
+
+const DETAIL_STATUS_MAP = {
+	0: { text: '● 예정', cls: 'badge-req' },
+	1: { text: '● 진행', cls: 'badge-done' },
+	2: { text: '● 검토', cls: 'badge-feedback' },
+	3: { text: '● 완료', cls: 'badge-prog' }
+};
+
+function getCsrfHeaders() {
+	const headers = { 'Content-Type': 'application/json' };
+	const csrfToken = document.querySelector('meta[name="_csrf"]')?.content;
+	const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content;
+	if (csrfToken && csrfHeader) {
+		headers[csrfHeader] = csrfToken;
+	}
+	return headers;
+}
+
+function getCsrfOnlyHeaders() {
+	const headers = {};
+	const csrfToken = document.querySelector('meta[name="_csrf"]')?.content;
+	const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content;
+	if (csrfToken && csrfHeader) {
+		headers[csrfHeader] = csrfToken;
+	}
+	return headers;
+}
+
+function getTaskApiBaseUrl() {
+	const pathParts = window.location.pathname.split('/').filter(Boolean);
+	if (pathParts.length >= 3 && pathParts[1] === 'project') {
+		return `/${pathParts[0]}/project/${pathParts[2]}/api/tasks`;
+	}
+	return '/api/tasks';
+}
+
+function renderAttachedFilesList(files) {
+    const list = document.getElementById('attachedFileList');
+    if (!list) return;
+    list.replaceChildren();
+    const count = document.getElementById('attachedFileCount');
+    if (count) count.textContent = `(${files.length})`;
+    if (!files.length) list.textContent = '등록된 첨부파일이 없습니다.';
+    files.forEach(file => {
+        const link = document.createElement('a');
+        link.href = getTaskApiBaseUrl() + '/subtasks/' + currentOpenSubTaskId + '/files/' + file.fileId;
+        link.textContent = file.originalName;
+        list.append(link, document.createElement('br'));
+    });
+}
+
+// 업무를 전환하거나 편집을 끝내면 이전 요청 결과와 첨부 선택을 폐기한다.
+function resetDetailDraft() {
+	document.getElementById('detailFileUploadForm')?.reset();
+	originalDetailSnapshot = null;
+	return ++detailViewVersion;
+}
+
+function getCurrentProjectMemberId() {
+	const panel = document.getElementById('taskDetailSidePanel');
+	return Number(panel?.dataset.currentProjectMemberId || 0);
+}
+
+/* ==========================================================================
+   1. 메인 업무 상세 패널 열기 (항상 조회 전용)
+   ========================================================================== */
+async function openDetailPanel(taskId, rowElem) {
+	if (!taskId) return;
+	const version = resetDetailDraft();
+	renderAttachedFilesList([]);
+	
+	currentEntityType = 'TASK';
+	currentOpenTaskId = Number(taskId);
+	currentOpenSubTaskId = null;
+	currentDetailRowElem = rowElem 
+		|| document.querySelector(`.task-tr[data-task-id="${taskId}"]`)
+		|| document.querySelector(`.gantt-tree-row[data-type="task"][data-id="${taskId}"]`);
+
+	highlightSelectedRow(currentDetailRowElem);
+
+	const panel = document.getElementById('taskDetailSidePanel');
+	if (!panel) return;
+
+	// 수정 모드 강제 종료 및 조회 전용 세팅
+	exitDetailEditModeUI();
+	setPanelReadonlyMode(true);
+
+	const typeBadge = document.getElementById('detailEntityTypeBadge');
+	if (typeBadge) {
+		typeBadge.textContent = '메인 업무';
+		typeBadge.classList.remove('subtask-mode');
+	}
+
+	const subtasksSection = document.getElementById('detailSubtasksSection');
+	if (subtasksSection) subtasksSection.style.display = 'block';
+
+	const dailyReportSection = document.getElementById('detailDailyReportSection');
+	if (dailyReportSection) dailyReportSection.style.display = 'none';
+
+	panel.classList.add('open');
+
+	try {
+		const baseUrl = getTaskApiBaseUrl();
+		const [detailRes, membersRes] = await Promise.all([
+			fetch(`${baseUrl}/${taskId}`),
+			fetch(`${baseUrl}/${taskId}/members`)
+		]);
+
+		if (!detailRes.ok) throw new Error('메인 업무 상세 조회 실패');
+		const data = await detailRes.json();
+		if (version !== detailViewVersion) return;
+		const task = data.task || data;
+		const subTasks = data.subTasks || task.subTasks || [];
+		//const taskMembers = membersRes.ok ? await membersRes.json() : [];
+
+		/*populateAssigneeOptions(taskMembers, task.projectMemberId, task.assigneeName);*/
+		bindDetailCommonFields(task);
+		renderDetailSubTasksList(subTasks, task);
+	} catch (err) {
+		if (version !== detailViewVersion) return;
+		console.error('openDetailPanel 에러:', err);
+		if (currentDetailRowElem) {
+			fallbackBindFromRow(currentDetailRowElem, 'TASK');
+		}
+	}
+}
+
+/* ==========================================================================
+   2. 하위업무 상세 패널 열기 (기본 조회 모드 + [수정] 버튼 노출)
+   ========================================================================== */
+async function openSubTaskDetailPanel(subTaskId, rowElem) {
+	if (!subTaskId) return;
+	const version = resetDetailDraft();
+	renderAttachedFilesList([]);
+
+	currentEntityType = 'SUB_TASK';
+	currentOpenSubTaskId = Number(subTaskId);
+	currentDetailRowElem = rowElem 
+		|| document.querySelector(`.subtask-tr[data-subtask-id="${subTaskId}"]`)
+		|| document.querySelector(`.gantt-tree-row[data-type="subtask"][data-id="${subTaskId}"]`);
+
+	highlightSelectedRow(currentDetailRowElem);
+
+	const panel = document.getElementById('taskDetailSidePanel');
+	if (!panel) return;
+
+	// 데이터 로드 전에는 일단 수정 버튼을 숨겨둠 (조회 전용 상태로 초기화)
+	canEditCurrentSubTask = false;
+	exitDetailEditModeUI();
+	setPanelReadonlyMode(true);
+
+	const typeBadge = document.getElementById('detailEntityTypeBadge');
+	if (typeBadge) {
+		typeBadge.textContent = '하위 업무';
+		typeBadge.classList.add('subtask-mode');
+	}
+
+	const subtasksSection = document.getElementById('detailSubtasksSection');
+	if (subtasksSection) subtasksSection.style.display = 'none';
+
+	const dailyReportSection = document.getElementById('detailDailyReportSection');
+	if (dailyReportSection) dailyReportSection.style.display = 'block';
+
+	panel.classList.add('open');
+
+	try {
+		const baseUrl = getTaskApiBaseUrl();
+		const res = await fetch(`${baseUrl}/subtasks/${subTaskId}`);
+		if (!res.ok) throw new Error('하위업무 상세 조회 실패');
+
+		const data = await res.json();
+		if (version !== detailViewVersion) return;
+		const subTask = data.subTask || data;
+        renderAttachedFilesList(subTask.files || []);
+		currentOpenTaskId = subTask.taskId || currentOpenTaskId;
+
+		let candidateMembers = data.taskMembers || [];
+		if (candidateMembers.length === 0 && currentOpenTaskId) {
+			const memRes = await fetch(`${baseUrl}/${currentOpenTaskId}/members`);
+			if (memRes.ok) candidateMembers = await memRes.json();
+		}
+
+		/*populateAssigneeOptions(candidateMembers, subTask.projectMemberId, subTask.assigneeName);*/
+		if (version !== detailViewVersion) return;
+		bindDetailCommonFields(subTask);
+
+		// [핵심] 로그인한 사용자가 해당 하위업무 담당자일 때만 수정 버튼 및 일일보고서 작성 폼 노출
+		const loginPmId = getCurrentProjectMemberId();
+		const isSubTaskAssignee = Number(subTask.assigneeMemberId || subTask.projectMemberId) === Number(loginPmId);
+		canEditCurrentSubTask = isSubTaskAssignee || document.getElementById('taskDetailSidePanel')?.dataset.leader === 'true';
+
+		// 담당자 본인이면 조회 전용 해제(수정 버튼 노출), 아니면 조회 전용 배지 노출
+		setPanelReadonlyMode(!canEditCurrentSubTask); // 담당자 또는 프로젝트 리더
+
+		const reportWriteBox = document.getElementById('dailyReportWriteFormBox');
+		if (reportWriteBox) {
+			reportWriteBox.style.display = isSubTaskAssignee ? 'flex' : 'none';
+		}
+		resetDailyReportForm();
+		await loadDailyReports(subTaskId);
+	} catch (err) {
+		if (version !== detailViewVersion) return;
+		console.error('openSubTaskDetailPanel 에러:', err);
+		if (currentDetailRowElem) {
+			fallbackBindFromRow(currentDetailRowElem, 'SUB_TASK');
+		}
+	}
+}
+
+/* ==========================================================================
+   3. 조회 전용 / 수정 모드 전환 및 일괄 저장 로직
+   ========================================================================== */
+function setPanelReadonlyMode(isReadonly) {
+	// 항상 필드는 잠금 상태(일반 텍스트 스타일)로 시작
+	toggleFieldLock(true);
+
+	const readonlyBadge = document.getElementById('detailReadonlyBadge');
+	if (readonlyBadge) {
+		readonlyBadge.style.display = isReadonly ? 'inline-flex' : 'none';
+	}
+
+	const editBtn = document.getElementById('btnDetailEditMode');
+	if (editBtn) {
+		editBtn.style.display = isReadonly ? 'none' : 'inline-block';
+	}
+
+	const delBtn = document.getElementById('btnDetailDeleteSubtask');
+	if (delBtn) {
+		delBtn.style.display = isReadonly ? 'none' : 'inline-block';
+	}
+
+	const saveBtn = document.getElementById('btnDetailSaveEdit');
+	if (saveBtn) saveBtn.style.display = 'none';
+
+	const cancelBtn = document.getElementById('btnDetailCancelEdit');
+	if (cancelBtn) cancelBtn.style.display = 'none';
+}
+
+function toggleFieldLock(lock) {
+	const titleEl = document.getElementById('detailTaskTitle');
+	const assigneeEl = document.getElementById('detailAssigneeSelect');
+	const startEl = document.getElementById('detailStartDate');
+	const endEl = document.getElementById('detailEndDate');
+	//const progressEl = document.getElementById('detailProgressRange');
+	const contentEl = document.getElementById('detailContentText');
+
+	if (titleEl) titleEl.readOnly = lock;
+	if (assigneeEl) assigneeEl.disabled = lock;
+	if (startEl) startEl.readOnly = lock;
+	if (endEl) endEl.readOnly = lock;
+	//if (progressEl) progressEl.disabled = lock;
+	if (contentEl) contentEl.readOnly = lock;
+}
+
+/**
+ * [수정] 버튼 클릭 시 수정 모드 진입
+ */
+function enterDetailEditMode() {
+	// 담당자 권한(canEditCurrentSubTask)이 없으면 수정 모드 진입 차단
+	if (currentEntityType !== 'SUB_TASK' || !currentOpenSubTaskId || !canEditCurrentSubTask) return;
+
+	const panel = document.getElementById('taskDetailSidePanel');
+	if (!panel) return;
+
+	originalDetailSnapshot = {
+		title: document.getElementById('detailTaskTitle')?.value || '',
+		status: String(currentDetailStatus),
+		projectMemberId: document.getElementById('detailAssigneeSelect')?.value || '',
+		startAt: document.getElementById('detailStartDate')?.value || '',
+		endAt: document.getElementById('detailEndDate')?.value || '',
+		content: document.getElementById('detailContentText')?.value || ''
+	};
+
+	const statusSelect = document.getElementById('detailStatusSelect');
+	if (statusSelect) {
+		statusSelect.value = String(currentDetailStatus);
+	}
+
+	panel.classList.add('is-editing');
+	toggleFieldLock(false);
+
+	const editBtn = document.getElementById('btnDetailEditMode');
+	const delBtn = document.getElementById('btnDetailDeleteSubtask');
+	const saveBtn = document.getElementById('btnDetailSaveEdit');
+	const cancelBtn = document.getElementById('btnDetailCancelEdit');
+
+	if (editBtn) editBtn.style.display = 'none';
+	if (delBtn) delBtn.style.display = 'none';
+	if (saveBtn) {
+		saveBtn.disabled = false;
+		saveBtn.style.display = 'inline-block';
+	}
+	if (cancelBtn) cancelBtn.style.display = 'inline-block';
+
+	document.getElementById('detailTaskTitle')?.focus();
+}
+
+function exitDetailEditModeUI() {
+	const panel = document.getElementById('taskDetailSidePanel');
+	if (panel) panel.classList.remove('is-editing');
+
+	toggleFieldLock(true);
+
+	// 하위업무이면서 동시에 담당자 본인(canEditCurrentSubTask)일 때만 수정/삭제 버튼 노출
+	const showEditBtns = (currentEntityType === 'SUB_TASK' && canEditCurrentSubTask);
+
+	const editBtn = document.getElementById('btnDetailEditMode');
+	const delBtn = document.getElementById('btnDetailDeleteSubtask');
+	const saveBtn = document.getElementById('btnDetailSaveEdit');
+	const cancelBtn = document.getElementById('btnDetailCancelEdit');
+	const readonlyBadge = document.getElementById('detailReadonlyBadge');
+
+	if (editBtn) editBtn.style.display = showEditBtns ? 'inline-block' : 'none';
+	if (delBtn) delBtn.style.display = showEditBtns && document.getElementById('taskDetailSidePanel')?.dataset.leader === 'true' ? 'inline-block' : 'none';
+	if (saveBtn) saveBtn.style.display = 'none';
+	if (cancelBtn) cancelBtn.style.display = 'none';
+	if (readonlyBadge) readonlyBadge.style.display = showEditBtns ? 'none' : 'inline-flex';
+}
+
+/**
+ * [취소] 버튼 클릭 시 원래 값 복원 후 조회 모드 복귀
+ */
+function cancelDetailEditMode() {
+	if (originalDetailSnapshot) {
+		const titleEl = document.getElementById('detailTaskTitle');
+		const assigneeEl = document.getElementById('detailAssigneeSelect');
+		const startEl = document.getElementById('detailStartDate');
+		const endEl = document.getElementById('detailEndDate');
+		const contentEl = document.getElementById('detailContentText');
+
+		if (titleEl) titleEl.value = originalDetailSnapshot.title;
+		if (assigneeEl && assigneeEl.value !== undefined) assigneeEl.value = originalDetailSnapshot.projectMemberId;
+		if (startEl) startEl.value = originalDetailSnapshot.startAt;
+		if (endEl) endEl.value = originalDetailSnapshot.endAt;
+		if (contentEl) contentEl.value = originalDetailSnapshot.content;
+
+		currentDetailStatus = parseInt(originalDetailSnapshot.status, 10) || 0;
+		updateDetailStatusBadgeUI(currentDetailStatus);
+	}
+	resetDetailDraft();
+	exitDetailEditModeUI();
+}
+
+/**
+ * [저장] 버튼 클릭 시 변경된 항목들을 서버에 PATCH 후 조회 모드 복귀
+ */
+async function saveDetailEditMode() {
+	if (currentEntityType !== 'SUB_TASK' || !currentOpenSubTaskId) return;
+	const version = detailViewVersion;
+	const saveButton = document.getElementById('btnDetailSaveEdit');
+	if (saveButton?.disabled) return;
+
+	const newValues = {
+		title: document.getElementById('detailTaskTitle')?.value.trim() || '',
+		status: document.getElementById('detailStatusSelect')?.value || String(currentDetailStatus),
+		projectMemberId: document.getElementById('detailAssigneeSelect')?.value || '',
+		startAt: document.getElementById('detailStartDate')?.value || '',
+		endAt: document.getElementById('detailEndDate')?.value || '',
+		content: document.getElementById('detailContentText')?.value || ''
+	};
+
+	if (!newValues.title) {
+		alert('하위업무 제목을 입력해 주세요.');
+		document.getElementById('detailTaskTitle')?.focus();
+		return;
+	}
+
+	// 1. FormData 생성 및 텍스트 데이터 추가 (DTO 필드명과 일치시킴)
+	const formData = new FormData();
+	formData.append('subTaskId', currentOpenSubTaskId);
+	formData.append('title', newValues.title);
+	formData.append('status', newValues.status);
+	formData.append('startAt', newValues.startAt);
+	formData.append('endAt', newValues.endAt);
+	formData.append('content', newValues.content);
+	if (newValues.projectMemberId) {
+		formData.append('projectMemberId', newValues.projectMemberId);
+	}
+
+	// 2. file-upload.js가 관리하는 input[type=file]에서 파일 꺼내서 같은 FormData에 추가!
+	const fileInput = document.getElementById('detailFileInput');
+	if (fileInput && fileInput.files && fileInput.files.length > 0) {
+		for (const file of fileInput.files) {
+			formData.append('selectFile', file); // List<MultipartFile> selectFile
+		}
+	}
+	const baseUrl = getTaskApiBaseUrl();
+	if (saveButton) saveButton.disabled = true;
+	try {
+		// 3. 단 한 번의 요청으로 텍스트 + 파일 동시 전송 (POST 또는 PUT)
+		const res = await fetch(`${baseUrl}/subtasks/${currentOpenSubTaskId}`, {
+			method: 'PUT', // 스프링 멀티파트 호환성을 위해 POST(또는 PUT) 권장
+			headers: getCsrfOnlyHeaders(), // ⚠️ Content-Type: application/json 절대 넣지 말 것!
+			body: formData
+		});
+
+		if (!res.ok) {
+			throw new Error('하위업무 수정 및 파일 업로드 실패');
+		}
+
+		const result = await res.json();
+		if (version !== detailViewVersion) return;
+		if (!result.success) throw new Error('하위업무 저장 실패');
+		renderAttachedFilesList(result.files || []);
+		document.getElementById('detailFileUploadForm')?.reset();
+		newValues.progress = result.progress;
+		renderDetailProgress(result.progress);
+
+		currentDetailStatus = parseInt(newValues.status, 10) || 0;
+		updateDetailStatusBadgeUI(currentDetailStatus);
+
+		const assigneeSelect = document.getElementById('detailAssigneeSelect');
+		const selectedAssigneeName = assigneeSelect?.options 
+			? (assigneeSelect.options[assigneeSelect.selectedIndex]?.text || '-')
+			: (assigneeSelect?.textContent?.trim() || '-');
+
+		syncUpdatedSubTaskToRow(newValues, selectedAssigneeName);
+		exitDetailEditModeUI();
+	} catch (err) {
+		if (version !== detailViewVersion) return;
+		console.error('saveDetailEditMode 오류:', err);
+		alert('수정 내용을 저장하는 중 오류가 발생했습니다.');
+	} finally {
+		if (version === detailViewVersion && saveButton) saveButton.disabled = false;
+	}
+}
+
+
+/* ==========================================================================
+   4. 공통 데이터 바인딩 및 좌측 목록 행 / 간트차트 동기화
+   ========================================================================== */
+function bindDetailCommonFields(item) {
+	const assigneeName = document.getElementById('detailAssigneeSelect'); 
+	const avatarEl = document.getElementById('detailAuthorAvatar');
+	const authorNameEl = document.getElementById('detailAuthorName');
+	const createdDateEl = document.getElementById('detailCreatedDate');
+	
+	const assigneeNameText = item.assigneeName || item.writerName || '미배정';
+	
+	if (avatarEl) avatarEl.textContent = assigneeNameText.substring(0, 2);
+	if (authorNameEl) authorNameEl.textContent = assigneeNameText;
+	if (createdDateEl) {
+		createdDateEl.textContent = item.created ? `등록일 ${formatDateOnly(item.created)}` : '등록일 -';
+	}
+	
+	if (assigneeName) assigneeName.textContent = assigneeNameText;
+
+	const titleEl = document.getElementById('detailTaskTitle');
+	if (titleEl) titleEl.value = item.title || '';
+
+	currentDetailStatus = Number(item.status || 0);
+	updateDetailStatusBadgeUI(currentDetailStatus);
+
+	const statusSelect = document.getElementById('detailStatusSelect');
+	if (statusSelect) statusSelect.value = String(currentDetailStatus);
+
+	const startEl = document.getElementById('detailStartDate');
+	const endEl = document.getElementById('detailEndDate');
+	if (startEl) startEl.value = formatDateOnly(item.startAt || item.start);
+	if (endEl) endEl.value = formatDateOnly(item.endAt || item.end);
+
+	renderDetailProgress(item.progress);
+
+	const contentEl = document.getElementById('detailContentText');
+	if (contentEl) contentEl.value = item.content || '';
+}
+
+function renderDetailProgress(value) {
+	const progVal = Number(value || 0);
+	const progRange = document.getElementById('detailProgressRange');
+	const progLabel = document.getElementById('detailProgressLabel');
+	if (progRange) progRange.value = progVal;
+	if (progLabel) progLabel.textContent = `${progVal}%`;
+}
+
+function updateDetailStatusBadgeUI(statusCode) {
+	const badge = document.getElementById('detailStatusBadge');
+	const textEl = document.getElementById('detailStatusText');
+	const info = DETAIL_STATUS_MAP[statusCode] || DETAIL_STATUS_MAP[0];
+
+	if (badge) {
+		badge.className = `badge-status ${info.cls}`;
+	}
+	if (textEl) {
+		textEl.textContent = info.text;
+	}
+}
+
+function syncUpdatedSubTaskToRow(newValues, assigneeName) {
+	// 1. 일반 업무 목록 탭(.subtask-tr) 동기화
+	const taskRow = document.querySelector(`.task-item-row.sub-task[data-subtask-id="${currentOpenSubTaskId}"], .subtask-tr[data-subtask-id="${currentOpenSubTaskId}"]`)
+		|| (currentDetailRowElem && currentDetailRowElem.classList.contains('subtask-tr') ? currentDetailRowElem : null);
+	if (taskRow) {
+		const titleSpan = taskRow.querySelector('.task-title-text, .task-name-text');
+		if (titleSpan) titleSpan.textContent = newValues.title;
+		const fill = taskRow.querySelector('.progress-bar-fill');
+		const progressText = taskRow.querySelector('.progress-text');
+		if (fill) fill.style.width = newValues.progress + '%';
+		if (progressText) progressText.textContent = newValues.progress + '%';
+
+		const statusBadge = taskRow.querySelector('.badge-status');
+		if (statusBadge) {
+			const info = DETAIL_STATUS_MAP[Number(newValues.status)] || DETAIL_STATUS_MAP[0];
+			statusBadge.className = `badge-status ${info.cls}`;
+			statusBadge.textContent = info.text;
+		}
+
+		const assigneeNameSpan = taskRow.querySelector('.assignee-name-text');
+		const avatarMini = taskRow.querySelector('.avatar-mini');
+		if (assigneeName && assigneeName !== '-') {
+			if (assigneeNameSpan) assigneeNameSpan.textContent = assigneeName;
+			if (avatarMini) avatarMini.textContent = assigneeName.substring(0, 2);
+		}
+
+		const dateCells = taskRow.querySelectorAll('.date-cell');
+		if (dateCells.length >= 1 && newValues.startAt) {
+			dateCells[0].textContent = newValues.startAt;
+		}
+		if (dateCells.length >= 2 && newValues.endAt) {
+			dateCells[1].textContent = newValues.endAt;
+		}
+	}
+
+	// 2. 간트차트 탭(.gantt-tree-row & 타임라인 바) 동기화
+	const ganttRow = document.querySelector(`.gantt-tree-row[data-type="subtask"][data-id="${currentOpenSubTaskId}"]`)
+		|| (currentDetailRowElem && currentDetailRowElem.classList.contains('gantt-tree-row') ? currentDetailRowElem : null);
+	if (ganttRow) {
+		ganttRow.dataset.title = newValues.title;
+		ganttRow.dataset.status = newValues.status;
+		ganttRow.dataset.start = newValues.startAt;
+		ganttRow.dataset.end = newValues.endAt;
+		ganttRow.dataset.progress = newValues.progress;
+
+		const gTitle = ganttRow.querySelector('.gantt-row-title');
+		if (gTitle) gTitle.textContent = newValues.title;
+
+		const gBadge = ganttRow.querySelector('.badge-status');
+		if (gBadge) {
+			const info = DETAIL_STATUS_MAP[Number(newValues.status)] || DETAIL_STATUS_MAP[0];
+			gBadge.className = `badge-status ${info.cls}`;
+			gBadge.textContent = info.text;
+		}
+
+		const gPeriod = ganttRow.querySelector('.col-g-period');
+		if (gPeriod) {
+			gPeriod.textContent = `${newValues.startAt || '-'} ~ ${newValues.endAt || '-'}`;
+		}
+
+		// 간트차트 타임라인 바 재렌더링
+		if (typeof calculateTimelineRange === 'function') calculateTimelineRange();
+		if (typeof renderTimelineHeader === 'function') renderTimelineHeader();
+		if (typeof renderTimelineBars === 'function') renderTimelineBars();
+	}
+}
+
+function renderDetailSubTasksList(subTasks, parentTask) {
+	const countEl = document.getElementById('detailSubtaskCount');
+	const boxEl = document.getElementById('detailSubtaskBox');
+	const addBtn = document.getElementById('btnDetailAddSubtask');
+
+	if (countEl) countEl.textContent = subTasks.length;
+
+	// 상위 메인 업무 담당자에게만 '+ 하위업무 추가' 버튼 노출
+	if (addBtn && parentTask) {
+		const isMainTaskOwner = Number(parentTask.projectMemberId) === Number(getCurrentProjectMemberId());
+		addBtn.style.display = isMainTaskOwner ? 'inline-block' : 'none';
+	}
+
+	if (!boxEl) return;
+	boxEl.innerHTML = '';
+
+	if (subTasks.length === 0) {
+		boxEl.innerHTML = `<div style="padding:18px; text-align:center; color:#9E9284; font-size:12.5px;">등록된 하위업무가 없습니다.</div>`;
+		return;
+	}
+
+	subTasks.forEach(st => {
+		const stId = st.subTaskId;
+		const stStatus = Number(st.status || 0);
+		const stInfo = DETAIL_STATUS_MAP[stStatus] || DETAIL_STATUS_MAP[0];
+		const itemDiv = document.createElement('div');
+		itemDiv.className = 'detail-subtask-item';
+		itemDiv.style.cursor = 'pointer';
+		itemDiv.onclick = () => {
+			const targetRow = document.querySelector(`.subtask-tr[data-subtask-id="${stId}"]`)
+				|| document.querySelector(`.gantt-tree-row[data-type="subtask"][data-id="${stId}"]`);
+			openSubTaskDetailPanel(stId, targetRow);
+		};
+
+		itemDiv.innerHTML = `
+			<div class="detail-subtask-left">
+				<span class="badge-status ${stInfo.cls}" style="font-size:11px; padding:2px 7px;">${stInfo.text}</span>
+				<span style="font-weight:600; color:#2B241D; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(st.title || '')}</span>
+			</div>
+			<div style="display:flex; align-items:center; gap:8px; font-size:12px; color:#786B5E;">
+				<span>${escapeHtml(st.assigneeName || '미배정')}</span>
+				<span style="font-weight:700; color:#4F6242;">${Number(st.progress || 0)}%</span>
+			</div>
+		`;
+		boxEl.appendChild(itemDiv);
+	});
+}
+
+/* ==========================================================================
+   5. 일일 업무 보고서 (Daily Report) CRUD
+   ========================================================================== */
+let reportListSequence = 0;
+async function loadDailyReports(subTaskId) {
+	const version = detailViewVersion;
+	const sequence = ++reportListSequence;
+	const listBox = document.getElementById('dailyReportListBox');
+	const countEl = document.getElementById('dailyReportCount');
+	if (!listBox) return;
+
+	try {
+		const baseUrl = getTaskApiBaseUrl();
+		const res = await fetch(`${baseUrl}/subtasks/${subTaskId}/daily-reports`);
+		if (!res.ok) throw new Error('일일 보고서 목록 조회 실패');
+
+		const reports = await res.json();
+		if (version !== detailViewVersion || sequence !== reportListSequence || Number(subTaskId) !== currentOpenSubTaskId) return;
+		if (countEl) countEl.textContent = `(${reports.length})`;
+
+		if (!Array.isArray(reports) || reports.length === 0) {
+			listBox.innerHTML = `<div style="padding:14px; text-align:center; color:#9E9284; font-size:12.5px; background:#FFFFFF; border:1px solid #E6E0D6; border-radius:8px;">작성된 일일 업무 보고서가 없습니다.</div>`;
+			return;
+		}
+
+		const loginPmId = getCurrentProjectMemberId();
+		listBox.innerHTML = '';
+
+		reports.forEach(r => {
+			const statusNum = Number(r.status || 0);
+			let statusLabel = '검토 대기';
+			let statusCls = 'wait';
+			if (statusNum === 1) {
+				statusLabel = '승인 완료';
+				statusCls = 'approved';
+			} else if (statusNum === 2) {
+				statusLabel = '반려';
+				statusCls = 'rejected';
+			}
+
+			// 본인 작성이면서 상급자 확인 전(modifiable)일 때만 수정/삭제 노출
+			const isWriter = Number(r.projectMemberId) === Number(loginPmId);
+			const isModifiable = (r.modifiable !== undefined)
+				? Boolean(r.modifiable)
+				: (statusNum === 0 && !r.viewed && !r.reviewed);
+
+			const card = document.createElement('div');
+			card.className = 'daily-report-item-card';
+			card.innerHTML = `
+				<div class="daily-report-item-top">
+					<div class="report-meta-left">
+						<span class="report-date-badge">${formatDateOnly(r.reportDate)}</span>
+						<span class="report-progress-chip">달성 ${Number(r.progress || 0)}%</span>
+						<span class="report-review-status ${statusCls}">${statusLabel}</span>
+					</div>
+					${(isWriter && isModifiable) ? `
+					<div class="daily-report-actions">
+						<button type="button" class="btn-report-mini" onclick="startEditDailyReport(${r.dailyReportId}, '${formatDateOnly(r.reportDate)}',${Number(r.progress || 0)}, \`${escapeBacktick(r.content || '')}\`)">수정</button>
+						<button type="button" class="btn-report-mini del" onclick="deleteDailyReport(${r.dailyReportId})">삭제</button>
+					</div>
+					` : ''}
+				</div>
+				<div class="daily-report-content-body">${escapeHtml(r.content || '')}</div>
+			`;
+			listBox.appendChild(card);
+		});
+	} catch (err) {
+		console.error('loadDailyReports 오류:', err);
+	}
+}
+
+function resetDailyReportForm() {
+	const idInput = document.getElementById('editingDailyReportId');
+	const dateInput = document.getElementById('dailyReportDateInput');
+	const progInput = document.getElementById('dailyReportProgressInput');
+	const contentInput = document.getElementById('dailyReportContentInput');
+	const titleSpan = document.getElementById('dailyReportFormTitle');
+	const cancelBtn = document.getElementById('btnCancelReportEdit');
+	const submitBtn = document.getElementById('btnSubmitDailyReport');
+
+	if (idInput) idInput.value = '';
+	if (dateInput) dateInput.value = new Date().toISOString().slice(0, 10);
+	if (progInput) progInput.value = 0;
+	if (contentInput) contentInput.value = '';
+	if (titleSpan) titleSpan.textContent = '새 일일 보고서 작성';
+	if (cancelBtn) cancelBtn.style.display = 'none';
+	if (submitBtn) submitBtn.textContent = '보고서 등록';
+}
+
+function startEditDailyReport(reportId, reportDate, progress, content) {
+	const idInput = document.getElementById('editingDailyReportId');
+	const dateInput = document.getElementById('dailyReportDateInput');
+	const progInput = document.getElementById('dailyReportProgressInput');
+	const contentInput = document.getElementById('dailyReportContentInput');
+	const titleSpan = document.getElementById('dailyReportFormTitle');
+	const cancelBtn = document.getElementById('btnCancelReportEdit');
+	const submitBtn = document.getElementById('btnSubmitDailyReport');
+
+	if (idInput) idInput.value = reportId;
+	if (dateInput) dateInput.value = reportDate;
+	if (progInput) progInput.value = progress;
+	if (contentInput) {
+		contentInput.value = content;
+		contentInput.focus();
+	}
+	if (titleSpan) titleSpan.textContent = '일일 보고서 수정';
+	if (cancelBtn) cancelBtn.style.display = 'inline-block';
+	if (submitBtn) submitBtn.textContent = '보고서 수정 저장';
+}
+
+let reportRefreshSequence = 0;
+async function refreshDailyReportState(subTaskId, version) {
+	if (version !== detailViewVersion || currentOpenSubTaskId !== subTaskId) return;
+	const sequence = ++reportRefreshSequence;
+	try {
+		const response = await fetch(`${getTaskApiBaseUrl()}/subtasks/${subTaskId}`);
+		if (!response.ok) throw new Error();
+		const detail = await response.json();
+		if (version !== detailViewVersion || sequence !== reportRefreshSequence) return;
+		const progress = (detail.subTask || detail).progress;
+		renderDetailProgress(progress);
+		const row = document.querySelector(`.task-item-row[data-subtask-id="${subTaskId}"]`);
+		const fill = row?.querySelector('.progress-bar-fill');
+		const label = row?.querySelector('.progress-text');
+		if (fill) fill.style.width = progress + '%';
+		if (label) label.textContent = progress + '%';
+		const gantt = document.querySelector(`.gantt-tree-row[data-type="subtask"][data-id="${subTaskId}"]`);
+		if (gantt) {
+			gantt.dataset.progress = progress;
+			renderTimelineBars();
+		}
+	} catch {
+		if (version !== detailViewVersion || sequence !== reportRefreshSequence) return;
+		alert('보고서는 반영됐지만 진행률을 불러오지 못했습니다. 상세 패널을 다시 열어 주세요.');
+	}
+	await loadDailyReports(subTaskId);
+}
+
+async function submitDailyReportForm() {
+	if (!currentOpenSubTaskId) return;
+	const subTaskId = currentOpenSubTaskId;
+	const version = detailViewVersion;
+
+	const editingId = document.getElementById('editingDailyReportId')?.value;
+	const reportDate = document.getElementById('dailyReportDateInput')?.value;
+	const progress = Number(document.getElementById('dailyReportProgressInput')?.value || 0);
+	const content = document.getElementById('dailyReportContentInput')?.value.trim() || '';
+
+	if (!reportDate) {
+		alert('보고일자를 선택해 주세요.');
+		return;
+	}
+	if (!content) {
+		alert('보고 내용을 입력해 주세요.');
+		return;
+	}
+
+	const baseUrl = getTaskApiBaseUrl();
+	const url = editingId
+		? `${baseUrl}/daily-reports/${editingId}`
+		: `${baseUrl}/subtasks/${currentOpenSubTaskId}/daily-reports`;
+	const method = editingId ? 'PUT' : 'POST';
+
+	try {
+		const res = await fetch(url, {
+			method: method,
+			headers: getCsrfHeaders(),
+			body: JSON.stringify({
+				subTaskId: currentOpenSubTaskId,
+				projectMemberId: getCurrentProjectMemberId(),
+				reportDate: reportDate,
+				progress: progress,
+				content: content
+			})
+		});
+
+		if (!res.ok) {
+			const errData = await res.json().catch(() => ({}));
+			throw new Error(errData.message || '보고서 저장에 실패했습니다.');
+		}
+
+		if (version !== detailViewVersion) return;
+		resetDailyReportForm();
+		await refreshDailyReportState(subTaskId, version);
+	} catch (err) {
+		console.error('submitDailyReportForm 에러:', err);
+		alert(err.message || '일일 보고서 처리 중 오류가 발생했습니다.');
+	}
+}
+
+async function deleteDailyReport(dailyReportId) {
+	const subTaskId = currentOpenSubTaskId;
+	const version = detailViewVersion;
+	if (!dailyReportId || !confirm('이 일일 보고서를 삭제하시겠습니까?\n(상급자가 이미 열람/검토한 보고서는 삭제할 수 없습니다.)')) {
+		return;
+	}
+
+	try {
+		const baseUrl = getTaskApiBaseUrl();
+		const res = await fetch(`${baseUrl}/daily-reports/${dailyReportId}?projectMemberId=${getCurrentProjectMemberId()}`, {
+			method: 'DELETE',
+			headers: getCsrfHeaders()
+		});
+
+		if (!res.ok) {
+			const errData = await res.json().catch(() => ({}));
+			throw new Error(errData.message || '상급자가 이미 확인하여 삭제할 수 없습니다.');
+		}
+
+		await refreshDailyReportState(subTaskId, version);
+	} catch (err) {
+		console.error('deleteDailyReport 에러:', err);
+		alert(err.message);
+	}
+}
+
+/* ==========================================================================
+   6. 패널 닫기 / 하위업무 모달 연동 / 유틸리티
+   ========================================================================== */
+function closeDetailPanel() {
+	resetDetailDraft();
+	currentOpenSubTaskId = null;
+	const panel = document.getElementById('taskDetailSidePanel');
+	if (panel) {
+		panel.classList.remove('open');
+		panel.classList.remove('is-editing');
+	}
+	document.querySelectorAll('.task-tr.selected-row, .subtask-tr.selected-row').forEach(tr => {
+		tr.classList.remove('selected-row');
+	});
+	document.querySelectorAll('.gantt-tree-row.selected-gantt-row, .gantt-grid-row.selected-gantt-row').forEach(el => {
+		el.classList.remove('selected-gantt-row');
+	});
+}
+
+function detailAddSubtaskClick() {
+	if (!currentOpenTaskId) return;
+	requestCreateSubTask(currentOpenTaskId);
+}
+
+function requestDeleteCurrentSubTask() {
+	if (!currentOpenSubTaskId) return;
+	openDeleteModal('subtask', currentOpenSubTaskId, null);
+}
+
+/*function handleFileUpload(inputElem) {
+	const file = inputElem.files && inputElem.files[0];
+	if (!file) return;
+
+	const listBox = document.getElementById('attachedFileList');
+	const countSpan = document.getElementById('attachedFileCount');
+	if (!listBox) return;
+
+	const item = document.createElement('div');
+	item.className = 'attached-file-item';
+	item.innerHTML = `
+		<span>📄 ${escapeHtml(file.name)} <small style="color:#9E9284;">(${(file.size / 1024).toFixed(1)} KB)</small></span>
+		<button type="button" style="border:none; background:none; color:#B84A39; cursor:pointer; font-size:12px;" onclick="this.parentElement.remove(); updateAttachedFileCount();">삭제</button>
+	`;
+	listBox.appendChild(item);
+	inputElem.value = '';
+	updateAttachedFileCount();
+}
+
+function updateAttachedFileCount() {
+	const listBox = document.getElementById('attachedFileList');
+	const countSpan = document.getElementById('attachedFileCount');
+	if (listBox && countSpan) {
+		countSpan.textContent = `(${listBox.children.length})`;
+	}
+}*/
+
+function highlightSelectedRow(rowElem) {
+	document.querySelectorAll('.task-tr.selected-row, .subtask-tr.selected-row').forEach(tr => {
+		tr.classList.remove('selected-row');
+	});
+	document.querySelectorAll('.gantt-tree-row.selected-gantt-row, .gantt-grid-row.selected-gantt-row').forEach(el => {
+		el.classList.remove('selected-gantt-row');
+	});
+
+	if (rowElem && rowElem.classList) {
+		if (rowElem.classList.contains('gantt-tree-row')) {
+			rowElem.classList.add('selected-gantt-row');
+			const type = rowElem.dataset.type;
+			const id = rowElem.dataset.id;
+			const gridRow = document.querySelector(`.gantt-grid-row[data-type="${type}"][data-id="${id}"]`);
+			if (gridRow) gridRow.classList.add('selected-gantt-row');
+		} else {
+			rowElem.classList.add('selected-row');
+		}
+	}
+}
+
+function fallbackBindFromRow(rowElem, type) {
+	// 간트차트 행(.gantt-tree-row)인 경우 dataset에서 우선 추출
+	if (rowElem.classList && rowElem.classList.contains('gantt-tree-row')) {
+		bindDetailCommonFields({
+			title: rowElem.dataset.title || rowElem.querySelector('.gantt-row-title')?.textContent?.trim() || '',
+			assigneeName: '미배정',
+			startAt: rowElem.dataset.start || '',
+			endAt: rowElem.dataset.end || '',
+			status: Number(rowElem.dataset.status || 0),
+			progress: Number(rowElem.dataset.progress || 0),
+			content: ''
+		});
+		return;
+	}
+
+	const titleText = rowElem.querySelector('.task-name-text')?.textContent?.trim() || '';
+	const assigneeText = rowElem.querySelector('.assignee-name-text')?.textContent?.trim() || '미배정';
+	const dateCells = rowElem.querySelectorAll('.date-cell');
+	const startText = dateCells[0]?.textContent?.trim() || '';
+	const endText = dateCells[1]?.textContent?.trim() || '';
+
+	bindDetailCommonFields({
+		title: titleText,
+		assigneeName: assigneeText,
+		startAt: startText !== '-' ? startText : '',
+		endAt: endText !== '-' ? endText : '',
+		status: 0,
+		progress: 0,
+		content: ''
+	});
+}
+
+function formatDateOnly(val) {
+	if (!val) return '';
+	const str = String(val).trim();
+	if (str.length >= 10) return str.substring(0, 10);
+	return str;
+}
+
+function escapeHtml(str) {
+	return String(str)
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#39;');
+}
+
+function escapeBacktick(str) {
+	return String(str).replace(/\\/g, '\\\\').replace(/`/g, '\`').replace(/\$/g, '\$');
+}
+
+/* ==========================================================================
+   7. 패널 너비 드래그 리사이저 & ESC 닫기 이벤트 바인딩
+   ========================================================================== */
+document.addEventListener('DOMContentLoaded', () => {
+	const panel = document.getElementById('taskDetailSidePanel');
+	const resizer = document.getElementById('paneResizerBar');
+
+	if (panel && resizer) {
+		let isResizing = false;
+
+		resizer.addEventListener('mousedown', (e) => {
+			isResizing = true;
+			resizer.classList.add('resizing');
+			document.body.style.cursor = 'col-resize';
+			document.body.style.userSelect = 'none';
+			e.preventDefault();
+		});
+
+		document.addEventListener('mousemove', (e) => {
+			if (!isResizing) return;
+			const newWidth = window.innerWidth - e.clientX;
+			if (newWidth >= 400 && newWidth <= window.innerWidth * 0.82) {
+				panel.style.width = `${newWidth}px`;
+			}
+		});
+
+		document.addEventListener('mouseup', () => {
+			if (isResizing) {
+				isResizing = false;
+				resizer.classList.remove('resizing');
+				document.body.style.cursor = '';
+				document.body.style.userSelect = '';
+			}
+		});
+	}
+
+	document.addEventListener('keydown', (e) => {
+		if (e.key === 'Escape') {
+			const panelEl = document.getElementById('taskDetailSidePanel');
+			if (panelEl && panelEl.classList.contains('open')) {
+				if (panelEl.classList.contains('is-editing')) {
+					cancelDetailEditMode();
+				} else {
+					closeDetailPanel();
+				}
+			}
+		}
+	});
+});

@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.tk.app.mapper.MeetingMinutesMapper">
+
+	<!-- 워크 회의록 등록 -->
+	<!-- 등록 시 소속 및 권한 검사 -->
+	<insert id="insertMeetingMinutes" parameterType="com.tk.app.domain.dto.MeetingMinutesDto">
+		INSERT INTO meeting_minutes(meeting_minute_id, project_id,
+	    			sub_task_id, member_id, title, content, created)
+	    	SELECT SEQ_MEETING_MINUTES.NEXTVAL, #{projectId}, #{subTaskId},
+				 #{memberId}, #{title}, #{content}, SYSDATE
+	    	FROM projects p
+		JOIN sub_tasks st ON st.project_id = p.project_id
+	    	WHERE p.project_id = #{projectId}
+	    		AND p.workspace_id = #{workspaceId}
+	    		AND p.deleted IS NULL
+	    		AND st.sub_task_id = #{subTaskId}
+	    		AND st.deleted IS NULL
+	    		AND EXISTS (
+	    			SELECT 1
+	    			FROM project_members pm
+	    			JOIN workspace_members wm 
+	    				ON wm.workspace_member_id = pm.workspace_member_id
+	    				AND wm.workspace_id = p.workspace_id
+	    			WHERE pm.project_id = p.project_id
+	    				AND wm.member_id = #{memberId}
+	    				AND wm.status = 0
+	    				AND pm.status = 0
+	    				AND pm.left IS NULL
+	    				AND pm.role IN (70, 50, 30, 10)
+	    	)
+	</insert>
+	
+	<!-- 워크 회의록 상세 조회 -->
+	<select id="findMeetingDetailMinutes" resultType="com.tk.app.domain.dto.MeetingMinutesDto">
+		SELECT mm.meeting_minute_id AS "meetingMinuteId",
+		       mm.title, mm.content AS "content",
+		       TO_CHAR(mm.meeting, 'YYYY.MM.DD') AS "meetingDate",
+		       TO_CHAR(mm.created, 'YYYY.MM.DD') AS "createdDate",
+		       md.name AS "authorName",
+		       CASE
+		       	  WHEN mm.member_id = #{memberId}
+		       	  	 OR EXISTS (
+		       	  	 	SELECT 1
+		       	  	 	FROM project_members pm
+		       	  	 	JOIN workspace_members wm
+		       	  	 		ON wm.workspace_member_id = pm.workspace_member_id
+	       	  	 			AND wm.workspace_id = p.workspace_id
+		       	  	 	WHERE pm.project_id = p.project_id
+		       	  	 		AND wm.member_id = #{memberId}
+		       	  	 		AND wm.status = 0
+		       	  	 		AND pm.left IS NULL
+		       	  	 		AND pm.role IN (70, 50, 30)
+		       	  	 )
+		       	  THEN 1
+		       	  ELSE 0
+		       END AS "canModify"
+		FROM meeting_minutes mm
+		JOIN projects p ON p.project_id = mm.project_id
+		LEFT OUTER JOIN member_details md ON md.member_id = mm.member_id
+		WHERE p.workspace_id = #{workspaceId}
+		    AND mm.meeting_minute_id = #{meetingMinuteId}
+		    AND mm.deleted IS NULL
+		    AND EXISTS (
+		        SELECT 1
+		        FROM workspace_members wm
+		        WHERE wm.workspace_id = p.workspace_id
+		            AND wm.member_id = #{memberId}
+		            AND wm.status = 0
+		            AND (
+		            		wm.role = 70
+		            		OR EXISTS (
+			        			SELECT 1
+			        			FROM project_members pm
+			        			WHERE pm.project_id = p.project_id
+			        				AND pm.workspace_member_id = wm.workspace_member_id
+			        				AND pm.left IS NULL
+			        			)
+			        		)
+		            )
+	</select>
+	
+	<!-- 이전글 -->
+	<select id="findByPrevMeeting" resultType="com.tk.app.domain.dto.MeetingMinutesDto">
+		SELECT m.meeting_minute_id AS "meetingMinuteId",
+		       m.title
+		FROM meeting_minutes m
+		JOIN projects p ON p.project_id = m.project_id
+		JOIN meeting_minutes c ON c.meeting_minute_id = #{meetingMinuteId}
+		JOIN projects cp ON cp.project_id = c.project_id
+			AND cp.workspace_id = p.workspace_id
+		WHERE p.workspace_id = #{workspaceId}
+		  AND m.deleted IS NULL
+		 AND EXISTS (
+		    SELECT 1
+		    FROM workspace_members wm
+		    WHERE wm.workspace_id = p.workspace_id
+		      AND wm.member_id = #{memberId}
+		      AND wm.status = 0
+		      AND (
+		          wm.role = 70
+		          OR EXISTS (
+		              SELECT 1
+		              FROM project_members pm
+		              WHERE pm.project_id = p.project_id
+		                AND pm.workspace_member_id = wm.workspace_member_id
+		                AND pm.left IS NULL
+		          )
+		      )
+		)
+		AND c.deleted IS NULL
+		AND (
+		    m.created &gt; c.created
+		    OR (
+		        m.created = c.created
+		        AND m.meeting_minute_id &gt; c.meeting_minute_id
+		    )
+		)
+		  ORDER BY m.created ASC, m.meeting_minute_id ASC
+		  FETCH FIRST 1 ROWS ONLY
+	</select>
+	
+	<!-- 다음글 -->
+	<select id="findByNextMeeting" resultType="com.tk.app.domain.dto.MeetingMinutesDto">
+		SELECT m.meeting_minute_id AS "meetingMinuteId",
+		       m.title
+		FROM meeting_minutes m
+		JOIN projects p ON p.project_id = m.project_id
+		JOIN meeting_minutes c ON c.meeting_minute_id = #{meetingMinuteId}
+		JOIN projects cp ON cp.project_id = c.project_id
+			AND cp.workspace_id = p.workspace_id
+		WHERE p.workspace_id = #{workspaceId}
+		  AND m.deleted IS NULL
+		  AND EXISTS (
+			    SELECT 1
+			    FROM workspace_members wm
+			    WHERE wm.workspace_id = p.workspace_id
+			      AND wm.member_id = #{memberId}
+			      AND wm.status = 0
+			      AND (
+			          wm.role = 70
+			          OR EXISTS (
+			              SELECT 1
+			              FROM project_members pm
+			              WHERE pm.project_id = p.project_id
+			                AND pm.workspace_member_id = wm.workspace_member_id
+			                AND pm.left IS NULL
+			          )
+			      )
+			)
+			AND c.deleted IS NULL
+			AND (
+			    m.created &lt; c.created
+			    OR (
+			        m.created = c.created
+			        AND m.meeting_minute_id &lt; c.meeting_minute_id
+			    )
+			)
+		  ORDER BY m.created DESC, m.meeting_minute_id DESC
+		  FETCH FIRST 1 ROWS ONLY
+	</select>
+
+</mapper>

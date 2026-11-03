@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/layout3}">
+
+<th:block layout:fragment="css">
+    <link rel="stylesheet" th:href="@{/dist/css/home.css}">
+    <link rel="stylesheet" th:href="@{/dist/css/manage/manage.css}">
+    <link rel="stylesheet" th:href="@{/dist/css/manage/approval.css}">
+    <link rel="stylesheet" th:href="@{/dist/css/manage/reportwrite.css}">
+    <link rel="stylesheet" th:href="@{/dist/vendor/quill/css/quill.snow.css}">
+</th:block>
+
+<th:block layout:fragment="content">
+    <div class="home-layout manage-layout approval-layout">
+        <nav th:replace="~{layout/pmSidebar::manageSidebar('approval')}"></nav>
+
+        <section class="section approval-page report-write-page" aria-labelledby="report-write-heading">
+            <div class="page-heading">
+                <div>
+                    <h1 id="report-write-heading" class="page-title" th:text="${mode == 'write' ? '프로젝트 보고서 등록' : '프로젝트 보고서 수정'}">프로젝트 보고서 등록</h1>
+                    <p class="page-description">프로젝트 진행 상황을 작성하고 자료를 첨부하세요.</p>
+                </div>
+            </div>
+
+            <div class="report-write-panel">
+                <div class="report-write-intro">
+                    <h2>보고서 작성</h2>
+                    <p>프로젝트, 제목, 진행률, 내용 입력 후 등록완료를 눌러 주세요.</p>
+                </div>
+
+                <form id="reportForm" name="reportForm" method="post" enctype="multipart/form-data"
+                      th:action="${mode == 'write'} ? @{/{domainKey}/manage/approval/write(domainKey=${domainKey})} : @{/{domainKey}/manage/approval/update/{id}(domainKey=${domainKey},id=${dto.reportId})}"
+                      th:object="${dto}">
+                    <input th:if="${_csrf != null}" type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                    <input type="hidden" id="projectMemberId" th:field="*{projectMemberId}">
+                    <div class="report-form-grid">
+                        <div class="report-form-field full">
+                            <label for="reportProject">프로젝트 <span aria-hidden="true">*</span></label>
+                            <input th:if="${mode != 'write'}" type="hidden" th:field="*{projectId}">
+                            <select id="reportProject" th:field="*{projectId}" th:disabled="${mode != 'write'}" required>
+                                <option value="">프로젝트를 선택하세요</option>
+                                <option th:each="p : ${projectOptions}" th:value="${p.projectId}" th:attr="data-member-id=${p.projectMemberId},data-progress=${p.progress}" th:text="${p.projectName}">프로젝트명</option>
+                            </select>
+                            <p class="report-helper">현재 참여 중인 프로젝트만 선택할 수 있습니다.</p>
+                        </div>
+
+                        <div class="report-form-field full">
+                            <label for="reportTitle">보고서 제목 <span aria-hidden="true">*</span></label>
+                            <input type="text" id="reportTitle" th:field="*{reportTitle}"
+                                   maxlength="200" placeholder="보고서 제목을 입력하세요" required>
+                        </div>
+
+                        <div class="report-form-field">
+						    <label for="reportProgress">현재 프로젝트 진행률</label>
+						    <input type="text" id="reportProgress" value="프로젝트를 선택하세요" readonly>
+						    <p class="report-helper">
+						        업무 진행 현황으로 계산된 값입니다.
+						        프로젝트 보고서 작성·승인은 프로젝트 진행률을 변경하지 않습니다.
+						    </p>
+						</div>
+
+                        <div class="report-form-field">
+                            <label>보고서 유형</label>
+                            <input type="text" value="프로젝트 보고서" readonly aria-label="프로젝트 보고서">
+                        </div>
+
+                        <div class="report-form-field full">
+							<label for="editor">보고서 내용 <span aria-hidden="true">*</span>
+					    </label>
+					    <div id="editor" th:utext="*{content}"></div>
+					    <input type="hidden" id="reportContent" th:field="*{content}">
+                        </div>
+
+                        <div class="report-form-field full">
+                            <label for="reportFiles">첨부파일</label>
+                            <ul class="pending-upload-list existing-upload-list" th:if="${not #lists.isEmpty(files)}">
+							    <li th:each="file : ${files}" class="existing-file-row">
+							        <span class="pending-upload-name" th:text="${file.originalName}">파일명</span>
+							        <input type="hidden" name="deleteFileIds" th:value="${file.fileId}" disabled>
+							        <button type="button" class="pending-upload-remove existing-file-remove" th:attr="aria-label=|${file.originalName} 삭제|">삭제</button>
+							    </li>
+							</ul>
+                            <div class="report-file-box">
+                                <input type="file" id="reportFiles" name="files" multiple>
+                                <span class="report-helper" id="fileSummary">선택된 파일 없음</span>
+                            </div>
+                            <ul class="pending-upload-list" id="selectedFiles" hidden></ul>
+                        </div>
+                    </div>
+
+                    <div class="report-actions">
+                        <button type="submit" class="approval-button approval-button-primary" th:text="${mode == 'write' ? '등록완료' : '수정완료'}">등록완료</button>
+                        <button type="reset" class="approval-button">다시입력</button>
+                        <a class="approval-button" th:href="@{/{domainKey}/manage/approval(domainKey=${domainKey})}">취소</a>
+                    </div>
+                </form>
+            </div>
+        </section>
+    </div>
+</th:block>
+
+<th:block layout:fragment="script">
+<script th:src="@{/dist/vendor/quill/js/quill.js}"></script>
+<script th:src="@{/dist/vendor/quill/js/resize.js}"></script>
+<script th:src="@{/dist/posts/qeditor.js}"></script>
+    <script>
+    function renderPendingFiles(input, summary, list) {
+        const selected = Array.from(input.files || []);
+		
+        const existingCount = input.form.querySelectorAll(
+                '.existing-file-row input[name="deleteFileIds"]:disabled'
+            ).length;
+
+            if (existingCount + selected.length > 5) {
+                const availableCount = Math.max(0, 5 - existingCount);
+
+                alert(
+                    '첨부파일은 기존 파일을 포함하여 최대 5개까지 가능합니다.\n'
+                    + '현재 추가 가능한 파일은 ' + availableCount + '개입니다.'
+                );
+
+                input.value = '';
+                selected = [];
+            }
+        
+        summary.textContent = selected.length
+            ? selected.length + '개 파일 선택'
+            : '선택된 파일 없음';
+
+        list.replaceChildren();
+        list.hidden = selected.length === 0;
+
+        selected.forEach((file, index) => {
+            const item = document.createElement('li');
+
+            const name = document.createElement('span');
+            name.className = 'pending-upload-name';
+            name.textContent = file.name;
+
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.className = 'pending-upload-remove';
+            removeButton.textContent = '삭제';
+            removeButton.setAttribute(
+                'aria-label', file.name + ' 첨부 취소');
+
+            removeButton.addEventListener('click', () => {
+                const transfer = new DataTransfer();
+
+                Array.from(input.files || []).forEach(
+                    (remainingFile, currentIndex) => {
+                        if (currentIndex !== index) {
+                            transfer.items.add(remainingFile);
+                        }
+                    }
+                );
+
+                input.files = transfer.files;
+
+                input.dispatchEvent(
+                    new Event('change', { bubbles: true })
+                );
+            });
+
+            item.append(name, removeButton);
+            list.appendChild(item);
+        });
+    }
+    
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.getElementById('reportForm');
+        
+        // 기존 첨부파일 삭제 선택
+        form.querySelectorAll('.existing-file-remove').forEach(button => {
+            button.addEventListener('click', function () {
+                const row = button.closest('.existing-file-row');
+                const deleteInput = row.querySelector('input[name="deleteFileIds"]');
+
+                deleteInput.disabled = false;
+                row.hidden = true;
+            });
+        });
+
+        // 다시입력 시 삭제 선택 취소
+        form.addEventListener('reset', function () {
+            form.querySelectorAll('.existing-file-row').forEach(row => {
+                const deleteInput = row.querySelector('input[name="deleteFileIds"]');
+
+                deleteInput.disabled = true;
+                row.hidden = false;
+            });
+        });
+        const project = document.getElementById('reportProject');
+        const memberId = document.getElementById('projectMemberId');
+        const files = document.getElementById('reportFiles');
+        const summary = document.getElementById('fileSummary');
+        const fileList = document.getElementById('selectedFiles');
+        const progressInput = document.getElementById('reportProgress');
+        
+        function syncProject() {
+            const option = project.selectedOptions[0];
+            if (!option || !option.value) {
+                memberId.value = '';
+                progressInput.value = '프로젝트를 선택하세요';
+                
+                return;
+            }
+
+            memberId.value = option.dataset.memberId || '';
+
+            const progress = Number(option.dataset.progress);
+            progressInput.value = (Number.isFinite(progress) ? progress : 0) + '%';
+        }
+        
+        function syncFiles() {
+            renderPendingFiles(files, summary, fileList);
+        }
+
+        project.addEventListener('change', syncProject);
+        files.addEventListener('change', syncFiles);
+        form.addEventListener('reset', function () {
+            setTimeout(function () { syncProject(); syncFiles(); }, 0);
+        });
+        form.addEventListener('submit', function (e) {
+            syncProject();
+
+            if (!project.value) {
+                e.preventDefault();
+                alert('등록할 수 있는 프로젝트를 선택해 주세요.');
+                return;
+            }
+
+            const htmlViewEL = document.querySelector('textarea#html-view');
+            const htmlContent = htmlViewEL ? htmlViewEL.value : quill.root.innerHTML;
+
+            if (!hasContent(htmlContent)) {
+                e.preventDefault();
+                alert('보고서 내용을 입력하세요.');
+
+                if (htmlViewEL) {
+                    htmlViewEL.focus();
+                } else {
+                    quill.focus();
+                }
+                return;
+            }
+
+            document.getElementById('reportContent').value = htmlContent;
+        });
+        syncProject();
+        
+        const originalContent = quill.root.innerHTML;
+
+        form.addEventListener('reset', function () {
+            setTimeout(function () {
+                quill.clipboard.dangerouslyPasteHTML(originalContent);
+            }, 0);
+        });
+        
+    });
+    </script>
+</th:block>
+</html>

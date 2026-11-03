@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+	<div th:fragment="content">
+		<link rel="stylesheet" th:href="@{/dist/css/project/project_dashboard.css}">
+
+		<div class="dash-split-wrapper" id="dashSplitWrapper">
+			<!-- 대시보드 메인 영역 -->
+			<div class="dash-main-container">
+
+				<!-- 1. 상단 프로젝트 진행률 요약 섹션 -->
+				<section class="dash-progress-card">
+					<div class="dash-card-header">
+						<div>
+							<h3 class="dash-section-title">📊 현재 프로젝트 진행 현황</h3>
+							<p class="dash-section-sub">전체 업무 기준 실시간 달성률입니다.</p>
+						</div>
+						<div class="dash-rate-highlight">
+							<span class="rate-label">전체 완료율</span>
+							<strong class="rate-number" th:text="|${summary != null ? summary.completionRate : 0}%|">0%</strong>
+						</div>
+					</div>
+
+					<!-- 전체 진행률 프로그레스 바 -->
+					<div class="dash-total-bar-bg">
+						<div class="dash-total-bar-fill" th:style="|width: ${summary != null ? summary.completionRate : 0}%;|"></div>
+					</div>
+
+					<!-- 4개 통계 KPI 그리드 -->
+					<div class="dash-kpi-grid">
+						<div class="kpi-item">
+							<span class="kpi-icon total">📋</span>
+							<div class="kpi-info">
+								<span class="kpi-label">전체 업무</span>
+								<strong class="kpi-val" th:text="|${summary != null ? summary.totalCount : 0}개|">0개</strong>
+							</div>
+						</div>
+
+						<div class="kpi-item">
+							<span class="kpi-icon done">✅</span>
+							<div class="kpi-info">
+								<span class="kpi-label">완료된 업무</span>
+								<strong class="kpi-val text-green" th:text="|${summary != null ? summary.completedCount : 0}개|">0개</strong>
+							</div>
+						</div>
+
+						<div class="kpi-item">
+							<span class="kpi-icon progress">🔥</span>
+							<div class="kpi-info">
+								<span class="kpi-label">진행 중인 업무</span>
+								<strong class="kpi-val text-blue" th:text="|${summary != null ? summary.inProgressCount : 0}개|">0개</strong>
+							</div>
+						</div>
+
+						<div class="kpi-item">
+							<span class="kpi-icon rate">🎯</span>
+							<div class="kpi-info">
+								<span class="kpi-label">대기/요청 업무</span>
+								<strong class="kpi-val text-muted" th:text="|${summary != null ? summary.pendingCount : 0}개|">0개</strong>
+							</div>
+						</div>
+					</div>
+				</section>
+
+				<!-- 2. 하단 2단 그리드: [좌] 업무 목록(임박한 순) / [우] 프로젝트 공지 -->
+				<div class="dash-bottom-grid">
+
+					<!-- [좌측] 마감 임박 업무 목록 (클릭 시 우측 상세 패널 오픈) -->
+					<section class="dash-panel-card">
+						<div class="dash-panel-header">
+							<h4 class="dash-panel-title">⏰ 마감 임박 업무 목록</h4>
+							<a class="btn-dash-more" th:href="@{|/${domainKey}/project/${projectId}?tab=task|}">전체보기 →</a>
+						</div>
+
+						<div class="dash-list-body">
+							<div class="dash-empty-box" th:if="${upcomingTasks == null or #lists.isEmpty(upcomingTasks)}">
+								마감 예정인 미완료 업무가 없습니다.
+							</div>
+
+							<ul class="dash-upcoming-list" th:if="${upcomingTasks != null and !#lists.isEmpty(upcomingTasks)}">
+								<li class="dash-upcoming-row task-item-row sub-task"
+								    th:each="item : ${upcomingTasks}"
+								    th:attr="data-subtask-id=${item.subTaskId}, data-end=${item.endAt}"
+								    th:onclick="|openSubTaskDetailPanel(${item.subTaskId}, this)|">
+									<div class="up-left">
+										<span class="badge-status"
+											  th:classappend="${item.status == 0} ? 'badge-req' : (${item.status == 1} ? 'badge-done' : (${item.status == 2} ? 'badge-feedback' : 'badge-prog'))"
+										      th:text="${item.status == 0 ? '● 예정' : (item.status == 1 ? '● 진행' : (item.status == 2 ? '● 검토' :'● 완료' ))}">● 예정</span>
+										<span class="up-title task-title-text" th:text="${item.title}">업무명</span>
+									</div>
+									<div class="up-right">
+										<span class="up-assignee col-assignee" th:text="${item.assigneeName}">담당자</span>
+										<span class="up-due date-cell" th:text="${item.endAt != null ? item.endAt : '-'}">2026-10-20</span>
+										<span class="dday-chip">임박</span>
+									</div>
+								</li>
+							</ul>
+						</div>
+					</section>
+
+					<!-- [우측] 프로젝트 공지사항 -->
+					<section class="dash-panel-card">
+						<div class="dash-panel-header">
+							<h4 class="dash-panel-title">📢 프로젝트 공지사항</h4>
+							<a class="btn-dash-more" th:href="@{|/${domainKey}/project/${projectId}?tab=notice|}">전체보기 →</a>
+						</div>
+
+						<div class="dash-list-body">
+							<div class="dash-empty-box" th:if="${notices == null or #lists.isEmpty(notices)}">
+								등록된 공지사항이 없습니다.
+							</div>
+
+							<ul class="dash-notice-list" th:if="${notices != null and !#lists.isEmpty(notices)}">
+								<li class="dash-notice-row" th:each="notice : ${notices}" >
+									<div class="notice-top">
+										<span class="notice-badge">공지</span>
+										<span class="notice-title" th:text="${notice.title}">공지 제목</span>
+									</div>
+									<div class="notice-meta">
+										<span th:text="${notice.createdAt != null ? notice.createdAt : '-'}">2026-10-16</span>
+									</div>
+								</li>
+							</ul>
+						</div>
+					</section>
+
+				</div>
+			</div>
+
+			<!-- 공통 우측 오버레이 상세 패널 Include (임박 업무 클릭 시 슬라이드 오픈) -->
+			<aside th:replace="~{project/fragments/detail_panel :: detailPanel}"></aside>
+		</div>
+
+		<script th:inline="javascript">
+			/*<![CDATA[*/
+			const currentDomainKey = /*[[${domainKey}]]*/ 'apple';
+			const currentProjectId = /*[[${projectId}]]*/ 1;
+			const currentProjectMemberId = /*[[${currentProjectMemberId}]]*/ 1;
+			/*]]>*/
+		</script>
+		<script>
+			// 마감일 기준 D-Day 배지 자동 계산
+			document.addEventListener('DOMContentLoaded', () => {
+				const today = new Date();
+				today.setHours(0, 0, 0, 0);
+
+				document.querySelectorAll('.dash-upcoming-row').forEach(row => {
+					const endStr = row.getAttribute('data-end');
+					const chip = row.querySelector('.dday-chip');
+					if (!endStr || !chip) return;
+
+					const parts = endStr.split('-');
+					if (parts.length !== 3) return;
+					const endDate = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+					const diff = Math.floor((endDate - today) / (1000 * 60 * 60 * 24));
+
+					if (diff < 0) {
+						chip.textContent = '지연 (D+' + Math.abs(diff) + ')';
+						chip.classList.add('overdue');
+					} else if (diff === 0) {
+						chip.textContent = 'D-Day';
+						chip.classList.add('urgent');
+					} else {
+						chip.textContent = 'D-' + diff;
+						if (diff <= 3) chip.classList.add('urgent');
+					}
+				});
+			});
+		</script>
+	</div>
+</body>
+</html>

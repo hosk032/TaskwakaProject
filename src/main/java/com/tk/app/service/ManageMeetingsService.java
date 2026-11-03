@@ -1,0 +1,17 @@
+package com.tk.app.service;
+
+import java.util.List;
+import java.util.Map;
+
+import com.tk.app.domain.dto.ManageMeetingsDto;
+
+public interface ManageMeetingsService {
+	public List<ManageMeetingsDto> findMeetingList(Map<String, Object> map);
+	public int countMeetings(Map<String, Object> map);
+	public List<ManageMeetingsDto> findMeetingsById(Map<String, Object> map);
+	public int updateMeetings(Map<String, Object> map);
+	public int deleteMeetings(Map<String, Object> map);
+	
+    public ManageMeetingsDto selectPrevMeeting(Map<String, Object> map);
+    public ManageMeetingsDto selectNextMeeting(Map<String, Object> map);
+}

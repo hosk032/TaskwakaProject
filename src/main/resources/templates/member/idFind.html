@@ -1,0 +1,103 @@
+
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>아이디 찾기 | TASKWAKA</title>
+<link th:replace="~{layout/header :: favicon}">
+<link rel="stylesheet" th:href="@{/dist/css/member-find.css}">
+</head>
+
+<body class="find-page">
+
+	<main class="find-card">
+
+		<div class="find-brand">
+			<img th:src="@{/dist/images/taskwaka-bear-icon.png}" alt=""> <span>TASKWAKA</span>
+		</div>
+
+		<h1>아이디 찾기</h1>
+		<p class="find-description">
+			회원가입 시 입력한 이름과 이메일을 입력해 주세요.<br> 일치하는 회원의 아이디 일부를 확인할 수 있습니다.
+		</p>
+
+		<form id="idFindForm" th:action="@{/member/idFind}" method="post">
+
+			<div class="find-field">
+				<label for="memberName">이름</label> <input type="text"
+					id="memberName" name="name" placeholder="이름을 입력하세요" required>
+			</div>
+
+			<div class="find-field">
+				<label for="memberEmail">가입 이메일</label> <input type="email"
+					id="memberEmail" name="email" placeholder="이메일을 입력하세요" required>
+			</div>
+
+			<button type="submit" class="find-submit" id="findBtn">아이디
+				찾기</button>
+
+		</form>
+
+		<div class="result-box" id="resultBox" role="status"
+			aria-live="polite" hidden></div>
+
+		<div class="find-links">
+			<a th:href="@{/member/login}">로그인으로 돌아가기</a> <span>|</span> <a
+				th:href="@{/member/pwdFind}">비밀번호 찾기</a>
+		</div>
+
+	</main>
+
+	<script>
+    const form = document.getElementById("idFindForm");
+    const resultBox = document.getElementById("resultBox");
+    const findBtn = document.getElementById("findBtn");
+
+    form.addEventListener("submit", function(e) {
+        e.preventDefault();
+
+        const formData = new URLSearchParams(new FormData(form));
+
+        findBtn.disabled = true;
+        resultBox.hidden = true;
+
+        fetch(form.action, {
+            method: "POST",
+            body: formData
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("REQUEST_FAIL");
+            }
+            return response.text();
+        })
+        .then(data => {
+            resultBox.hidden = false;
+
+            if (data.startsWith("FOUND:")) {
+                resultBox.textContent = "가입된 아이디: " + data.substring(6);
+            } else if (data === "NOT_FOUND") {
+                resultBox.textContent = "일치하는 회원 정보를 찾을 수 없습니다.";
+            } else if (data === "TOO_MANY") {
+                resultBox.textContent = "조회 횟수를 초과했습니다. 10분 후 다시 시도해 주세요.";
+            } else if (data === "INVALID_INPUT") {
+                resultBox.textContent = "이름과 이메일을 정확히 입력해 주세요.";
+            } else {
+                resultBox.textContent = "아이디 조회에 실패했습니다.";
+            }
+        })
+        .catch(error => {
+            resultBox.hidden = false;
+            resultBox.textContent = "서버 요청 중 오류가 발생했습니다.";
+            console.error(error);
+        })
+        .finally(() => {
+            findBtn.disabled = false;
+        });
+    });
+</script>
+
+</body>
+</html>

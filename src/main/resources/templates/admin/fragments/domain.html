@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+	<div th:fragment="content">
+
+		<div class="panel-card" id="workspace-app">
+
+
+			<div class="panel-card-title">
+				<span>전체 워크 목록 조회 및 관리</span>
+
+				<div style="display: flex; gap: 8px;">
+					<input type="text" class="warm-input" :value="keyword"
+						@input="keyword = $event.target.value"
+						placeholder="워크명, 도메인, 사장 이름 검색..." style="width: 240px;">
+					<select class="warm-select" v-model="status">
+						<option value="">전체 상태</option>
+						<option value="Y">활성</option>
+						<option value="N">정지</option>
+					</select>
+				</div>
+			</div>
+
+
+			<table class="warm-table">
+				<thead>
+					<tr>
+						<th>워크명</th>
+						<th>도메인 주소</th>
+						<th>사장</th>
+						<th>회원 수</th>
+						<th>상태</th>
+					</tr>
+				</thead>
+
+				<tbody>
+					<tr v-for="workspace in pagedWorkspaces"
+						:key="workspace.workspace_id">
+						<td><span @click="showDetail(workspace)"
+							v-text="workspace.subject"
+							style="cursor: pointer; color: #654b37; font-weight: 600;">
+						</span></td>
+						<td v-text="workspace.domain_key"></td>
+						<td v-text="workspace.pm_name"></td>
+						<td v-text="workspace.member_count"></td>
+						<td v-text="workspace.active === 'Y' ? '활성' : '정지'"></td>
+					</tr>
+					<tr v-if="pagedWorkspaces.length === 0">
+					    <td colspan="5" style="text-align: center; padding: 35px 0; color: #888;">
+					        검색 결과가 없습니다.
+					    </td>
+					</tr>
+				</tbody>
+			</table>
+
+
+			<!-- 페이징 -->
+			<div class="workspace-pagination" v-if="workspaceTotalPages > 1">
+				<button type="button" :disabled="workspacePage === 1"
+					@click="workspacePage--">이전</button>
+
+				<button type="button" v-for="page in workspaceTotalPages"
+					:key="page" :class="{ 'page-active': workspacePage === page }"
+					@click="workspacePage = page">{{ page }}</button>
+				<button type="button"
+					:disabled="workspacePage === workspaceTotalPages"
+					@click="workspacePage++">다음</button>
+			</div>
+
+
+
+
+
+			<!-- 워크 상세 정보 -->
+			<div v-if="selectedWorkspace" class="workspace-detail">
+
+				<div class="workspace-detail-header">
+					<div>
+						<div class="workspace-detail-label">WORKSPACE DETAILS</div>
+						<h3 v-text="selectedWorkspace.subject"></h3>
+						<span class="workspace-detail-id"> WORKSPACE # <span
+							v-text="selectedWorkspace.workspace_id"> </span>
+						</span>
+					</div>
+
+					<div class="workspace-detail-actions">
+						<span class="workspace-status"
+							:class="selectedWorkspace.active === 'Y' ? 'is-active' : 'is-stopped'"
+							v-text="selectedWorkspace.active === 'Y' ? '정상 운영' : '운영 정지'">
+						</span>
+						<button type="button" class="workspace-close-btn"
+							@click="closeDetail()">✕</button>
+					</div>
+				</div>
+
+				<div class="workspace-detail-grid">
+					<div class="workspace-info-item">
+						<span class="workspace-info-label">도메인 주소</span> <strong
+							v-text="selectedWorkspace.domain_key"></strong>
+					</div>
+
+					<div class="workspace-info-item">
+						<span class="workspace-info-label">대표 사장</span> <strong
+							v-text="selectedWorkspace.pm_name"></strong>
+					</div>
+
+					<div class="workspace-info-item">
+						<span class="workspace-info-label">소속 회원</span> <strong>
+							<span v-text="selectedWorkspace.member_count"></span>명
+						</strong>
+					</div>
+
+					<div class="workspace-info-item">
+						<span class="workspace-info-label">운영 상태</span> <strong
+							v-text="selectedWorkspace.active === 'Y' ? '활성' : '정지'"></strong>
+					</div>
+				</div>
+
+				<div class="workspace-management">
+					<h4>운영 관리 정보</h4>
+
+					<div class="workspace-management-row">
+						<span>정지 사유</span> <span v-text="selectedWorkspace.reason || '없음'"></span>
+					</div>
+
+					<div class="workspace-management-row">
+						<span>상태 변경일</span> <span
+							v-text="selectedWorkspace.status ? new Date(selectedWorkspace.status)
+							.toLocaleDateString('ko-KR') : '기록 없음'"></span>
+					</div>
+				</div>
+
+				<div style="margin-top: 20px;">
+
+					<div v-if="selectedWorkspace.active === 'Y'">
+						<textarea class="warm-textarea" v-model="stopReason"
+							placeholder="워크 정지 사유를 입력하세요."
+							style="width: 100%; min-height: 80px;"></textarea>
+
+						<button type="button" class="btn-danger"
+							@click="changeWorkspaceStatus('N')">워크 정지</button>
+					</div>
+
+					<div v-else>
+						<button type="button" class="btn-sage"
+							@click="changeWorkspaceStatus('Y')">워크 정지 해제</button>
+					</div>
+
+				</div>
+
+			</div>
+
+
+			<div class="panel-card-title" style="margin-top: 30px;">
+				<span>사장 변경 요청 목록</span>
+			</div>
+
+			<table class="warm-table">
+				<thead>
+					<tr>
+						<th>워크명</th>
+						<th>기존 사장</th>
+						<th>변경할 사장</th>
+						<th>요청 사유</th>
+						<th>상태</th>
+						<th>처리</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr v-for="pm in pagedPmChanges" :key="pm.pm_change_id">
+						<td>
+						    <button type="button" class="pm-detail-link" @click="showPmDetail(pm)" v-text="pm.workspace_name"></button>
+						</td>
+						<td v-text="pm.old_pm_name"></td>
+						<td v-text="pm.new_pm_name"></td>
+						<td>
+						    <span class="pm-reason-text" v-text="pm.reason"></span>
+						</td>
+						<td
+							v-text="pm.status === 0 ? '승인 대기' : pm.status === 1 ? '승인' : '거절'">
+						</td>
+						<td>
+							<div v-if="pm.status === 0" class="pm-change-actions">
+								<button type="button" class="btn-sage"
+									@click="processPmChange(pm, 1)">승인</button>
+								<button type="button" class="btn-danger"
+									@click="processPmChange(pm, 2)">거절</button>
+							</div> <span v-else>처리 완료</span>
+						</td>
+					</tr>
+					<tr v-if="pmChanges.length === 0">
+						<td colspan="6">사장 변경 요청이 없습니다.</td>
+					</tr>
+				</tbody>
+			</table>
+			
+			<!-- 사장 변경 요청 상세보기 모달 -->
+			<div class="pm-modal-overlay" v-if="selectedPmChange" @click.self="closePmDetail">
+			    <div class="pm-modal-box">
+			        <div class="pm-modal-header">
+			            <h3>사장 변경 요청 상세정보</h3>
+			            <button type="button" class="pm-modal-close" @click="closePmDetail">✕</button>
+			        </div>
+			
+			        <div class="pm-modal-body">
+			            <div class="pm-modal-row">
+			                <span>워크스페이스</span>
+			                <strong v-text="selectedPmChange.workspace_name"></strong>
+			            </div>
+			            <div class="pm-modal-row">
+			                <span>기존 사장</span>
+			                <strong v-text="selectedPmChange.old_pm_name"></strong>
+			            </div>
+			            <div class="pm-modal-row">
+			                <span>변경할 사장</span>
+			                <strong v-text="selectedPmChange.new_pm_name"></strong>
+			            </div>
+			            <div class="pm-modal-row">
+						    <span>신청일</span>
+						    <strong v-text="selectedPmChange.requested ? selectedPmChange.requested.substring(0, 10) : '-'"></strong>
+						</div>
+						
+						<div class="pm-modal-row">
+						    <span>처리일</span>
+						    <strong v-text="selectedPmChange.processed ? selectedPmChange.processed.substring(0, 10) : '미처리'"></strong>
+						</div>
+			            <div class="pm-modal-row">
+			                <span>요청 사유</span>
+			                <strong v-text="selectedPmChange.reason"></strong>
+			            </div>
+			            <div class="pm-modal-row">
+			                <span>처리 상태</span>
+			                <strong v-text="selectedPmChange.status === 0 ? '승인 대기' : selectedPmChange.status === 1 ? '승인' : '거절'"></strong>
+			            </div>
+			        </div>
+			
+			        <div class="pm-modal-footer">
+			            <button type="button" class="btn-subtle" @click="closePmDetail">닫기</button>
+			        </div>
+			    </div>
+			</div>
+
+
+			<!-- 변경 요청 페이징 -->
+			<div class="workspace-pagination" v-if="pmTotalPages > 1">
+
+				<button type="button" :disabled="pmPage === 1" @click="pmPage--">이전</button>
+
+				<button type="button" v-for="page in pmTotalPages" :key="page"
+					:class="{ 'page-active': pmPage === page }" @click="pmPage = page">{{ page }}</button>
+
+				<button type="button" :disabled="pmPage === pmTotalPages" @click="pmPage++">다음</button>
+			</div>
+
+
+		</div>
+
+	</div>
+
+<th:block th:fragment="script">
+
+    <script th:if="${activeSection == 'domain'}">
+	    const { createApp } = Vue;
+	
+	    createApp({
+	    	data: function() {
+	    	    return {
+	    	        workspaces: [],
+	    	        pmChanges: [],
+	    	        workspacePage: 1,
+	    	        workspacePageSize: 5,
+	    	        pmPage: 1,
+	    	        pmPageSize: 5,
+	    	        keyword: '',
+	    	        status: '',
+	    	        selectedWorkspace: null,
+	    	        selectedPmChange: null,
+	    	        stopReason: ''
+	    	    };
+	    	},
+	    	
+	    	computed: {
+	    	    filteredWorkspaces: function() {
+	    	        return this.workspaces.filter(workspace => {
+	    	        	const keywordMatch =
+	    	        	    (workspace.subject || '').toLowerCase().includes(this.keyword.toLowerCase())
+	    	        	    || (workspace.domain_key || '').toLowerCase().includes(this.keyword.toLowerCase())
+	    	        	    || (workspace.pm_name || '').toLowerCase().includes(this.keyword.toLowerCase());
+	
+	    	            const statusMatch =
+	    	                this.status === '' || workspace.active === this.status;
+	
+	    	            return keywordMatch && statusMatch;
+	    	        });
+	    	    },
+	    	    pagedWorkspaces: function() {
+	    	        const start = (this.workspacePage - 1) * this.workspacePageSize;
+	
+	    	        return this.filteredWorkspaces.slice(
+	    	            start,
+	    	            start + this.workspacePageSize
+	    	        );
+	    	    },
+	
+	    	    workspaceTotalPages: function() {
+	    	        return Math.ceil(
+	    	            this.filteredWorkspaces.length / this.workspacePageSize
+	    	        );
+	    	    },
+	    	    pagedPmChanges: function() {
+	    	        const start = (this.pmPage - 1) * this.pmPageSize;
+	
+	    	        return this.pmChanges.slice(
+	    	            start,
+	    	            start + this.pmPageSize
+	    	        );
+	    	    },
+	
+	    	    pmTotalPages: function() {
+	    	        return Math.ceil(
+	    	            this.pmChanges.length / this.pmPageSize
+	    	        );
+	    	    }
+	    	},
+	    	
+	    	watch: {
+	    	    keyword: function() {
+	    	        this.workspacePage = 1;
+	    	    },
+	
+	    	    status: function() {
+	    	        this.workspacePage = 1;
+	    	    }
+	    	},
+	    	
+	    	methods: {
+	    	    showDetail: function(workspace) {
+	    	        this.selectedWorkspace = workspace;
+	    	    },
+	
+	    	    closeDetail: function() {
+	    	        this.selectedWorkspace = null;
+	    	    },
+	    	    
+	    	    showPmDetail: function(pm) {
+	    	        this.selectedPmChange = pm;
+	    	    },
+
+	    	    closePmDetail: function() {
+	    	        this.selectedPmChange = null;
+	    	    },
+	    	    
+	    	    changeWorkspaceStatus: function(active) {
+	
+	    	        if (active === 'N' && !this.stopReason.trim()) {
+	    	            alert('정지 사유를 입력해주세요.');
+	    	            return;
+	    	        }
+	
+	    	        if (!confirm(active === 'N'
+	    	                ? '이 워크를 정지하시겠습니까?'
+	    	                : '이 워크의 정지를 해제하시겠습니까?')) {
+	    	            return;
+	    	        }
+	
+	    	        const dto = {
+	    	            workspace_id: this.selectedWorkspace.workspace_id,
+	    	            active: active,
+	    	            reason: active === 'N' ? this.stopReason.trim() : null
+	    	        };
+	
+	    	        fetch('/admin/api/workspaces/status', {
+	    	            method: 'POST',
+	    	            headers: {
+	    	                'Content-Type': 'application/json'
+	    	            },
+	    	            body: JSON.stringify(dto)
+	    	        })
+	    	        .then(response => {
+	    	            if (!response.ok) {
+	    	                throw new Error('워크 상태 변경 실패');
+	    	            }
+	    	            return response.text();
+	    	        })
+	    	        .then(data => {
+	    	            alert(data);
+	    	            location.reload();
+	    	        })
+	    	        .catch(error => {
+	    	            console.error(error);
+	    	            alert('워크 상태 변경 중 오류가 발생했습니다.');
+	    	        });
+	    	    },
+	    	    
+	
+	    	    processPmChange: function(pm, status) {
+	
+	    	        let rejectReason = null;
+	
+	    	        if (status === 2) {
+	    	            rejectReason = prompt('거절 사유를 입력하세요.');
+	
+	    	            if (rejectReason === null) {
+	    	                return;
+	    	            }
+	
+	    	            if (!rejectReason.trim()) {
+	    	                alert('거절 사유를 입력해주세요.');
+	    	                return;
+	    	            }
+	    	        }
+	
+	    	        if (!confirm(status === 1 ? '사장 변경 요청을 승인하시겠습니까?' : '사장 변경 요청을 거절하시겠습니까?')) {
+	    	            return;
+	    	        }
+	
+	    	        const dto = {
+	    	            pm_change_id: pm.pm_change_id,
+	    	            status: status,
+	    	            reject_reason: rejectReason
+	    	        };
+	
+	    	        fetch('/admin/api/pm-changes/process', {
+	    	            method: 'POST',
+	    	            headers: {
+	    	                'Content-Type': 'application/json'
+	    	            },
+	    	            body: JSON.stringify(dto)
+	    	        })
+	    	        .then(async response => {
+				    const message = await response.text();
+				
+				    if (!response.ok) {
+				        throw new Error(message);
+				    }
+				    return message;
+				})
+	    	        .then(data => {
+	    	            alert(data);
+	    	            location.reload();
+	    	        })
+	    	        .catch(error => {
+	    	            console.error(error);
+	    	            alert(error.message);
+	    	        });
+	    	    }
+	
+	    	},
+	
+	        mounted: function() {
+	            fetch('/admin/api/workspaces')
+	                .then(response => {
+	                    if (!response.ok) {
+	                        throw new Error('워크 목록 조회 실패');
+	                    }
+	                    return response.json();
+	                })
+	                .then(data => {
+	                    this.workspaces = data;
+	                })
+	                .catch(error => {
+	                    console.error(error);
+	                });
+	
+	            fetch('/admin/api/pm-changes')
+	                .then(response => {
+	                    if (!response.ok) {
+	                        throw new Error('사장 변경 요청을 불러오지 못했습니다.');
+	                    }
+	                    return response.json();
+	                })
+	                .then(data => {
+	                    this.pmChanges = data;
+	                })
+	                .catch(error => {
+	                    console.error(error);
+	                });
+	
+	        }
+	    }).mount('#workspace-app');
+	</script>
+
+</th:block>
+
+</body>
+</html>

@@ -1,0 +1,165 @@
+﻿@charset "UTF-8";
+
+.meeting-detail-page > .page-heading,
+.meeting-detail-page > .shell-content,
+.meeting-detail-page > .shell-actions {
+    width: 100%;
+    max-width: 960px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.meeting-detail-page .shell-content {
+    flex: 0 0 auto;
+}
+
+.meeting-detail-page .meeting-detail-title {
+    margin: 0 0 20px;
+    color: #594331;
+    font-family: inherit;
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.meeting-detail-page .meeting-detail-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 32px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #E8E2D9;
+    color: #786B5E;
+    font-size: 14px;
+}
+
+.meeting-detail-page .meeting-detail-body {
+    min-height: 240px;
+    padding-top: 24px;
+    font-size: 15px;
+    line-height: 1.9;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.meeting-detail-page .meeting-detail-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-left: auto;
+}
+
+.meeting-detail-page .meeting-delete-button {
+    border-color: #E8C9C5;
+    background: #FFF5F3;
+    color: #A3483E;
+}
+
+.meeting-detail-page .meeting-delete-button:hover {
+    border-color: #D8AAA4;
+    background: #FBE5E1;
+    color: #89382F;
+}
+
+.meeting-detail-page .meeting-navigation {
+    margin-top: 28px;
+    border-top: 1px solid #E8E2D9;
+}
+
+.meeting-detail-page .meeting-navigation > .notice-navigation {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+    min-height: 56px;
+    margin: 0;
+    padding: 16px 4px;
+    border: 0;
+    border-bottom: 1px solid #EEE8E0;
+    border-radius: 0;
+    background: transparent;
+    color: #8B7E71;
+    font-size: 13px;
+    line-height: 1.6;
+    white-space: nowrap;
+}
+
+.meeting-detail-page .meeting-navigation > .notice-navigation::before {
+    content: "↑";
+    flex: 0 0 18px;
+    color: #9A8D80;
+    font-size: 16px;
+    text-align: center;
+}
+
+.meeting-detail-page .meeting-navigation > .notice-navigation + .notice-navigation::before {
+    content: "↓";
+}
+
+.meeting-detail-page .meeting-navigation a,
+.meeting-detail-page .meeting-navigation span {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    font-size: 14px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.meeting-detail-page .meeting-navigation a {
+    color: #493B2F;
+    font-weight: 500;
+    text-decoration: none;
+    transition: color 0.15s;
+}
+
+.meeting-detail-page .meeting-navigation a:hover {
+    color: #4F6242;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+
+.meeting-detail-page .meeting-navigation a:focus-visible {
+    outline: 2px solid #71865B;
+    outline-offset: 4px;
+    border-radius: 3px;
+}
+
+.meeting-detail-page .meeting-navigation span {
+    color: #A69B8F;
+    font-weight: 400;
+}
+
+.meeting-detail-page #meetingEditor {
+    height: 320px;
+}
+
+#meetingsCreateForm .form-label {
+    margin-bottom: 8px;
+    color: #594331;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+#meetingsCreateForm :is(.form-control, .form-select) {
+    height: 46px;
+    padding: 10px 14px;
+    border: 1px solid #E4E1D9;
+    border-radius: 10px;
+    background-color: #FCFCFA;
+    color: #493B2F;
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+#meetingsCreateForm .form-select {
+    padding-right: 38px;
+}
+
+#meetingsCreateForm :is(.form-control, .form-select):focus {
+    outline: none;
+    border-color: #71865B;
+    background-color: #FFFFFF;
+    box-shadow: 0 0 0 3px rgba(113, 134, 91, 0.12);
+}

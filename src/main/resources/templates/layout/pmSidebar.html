@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+<nav th:fragment="manageSidebar(activeMenu)" id="sidemenu" class="sidemenu tw-sidebar" aria-label="PM 메뉴">
+    <div class="tw-nav-groups manage-menu">
+        <details class="tw-nav-group" open>
+            <summary th:replace="~{layout/sidebarUi :: heading('📚', '대시보드')}"></summary>
+            <ul class="tw-nav-items">
+                <li>
+                    <a th:href="@{/{domainKey}/manage/pmDashboard(domainKey=${domainKey})}"
+                       th:attr="aria-current=${activeMenu == 'pmDashboard' ? 'page' : null}">
+                        <th:block th:replace="~{layout/sidebarUi :: label('📚', '대시보드')}"></th:block>
+                    </a>
+                </li>
+                <li>
+                    <a th:href="@{/{domainKey}/manage/gantt(domainKey=${domainKey})}"
+                       th:attr="aria-current=${activeMenu == 'gantt' ? 'page' : null}">
+                        <th:block th:replace="~{layout/sidebarUi :: label('📉', '프로젝트 간트차트')}"></th:block>
+                    </a>
+                </li>
+            </ul>
+        </details>
+        <details class="tw-nav-group" open>
+            <summary th:replace="~{layout/sidebarUi :: heading('👥', '팀원관리')}"></summary>
+            <ul class="tw-nav-items">
+                <li th:if="${manageWorkspaceRole == 70}">
+                    <a th:href="@{/{domainKey}/manage/workspaceRoles(domainKey=${domainKey})}"
+                       th:attr="aria-current=${activeMenu == 'workspaceRoles' ? 'page' : null}">
+                        <th:block th:replace="~{layout/sidebarUi :: label('🏷️', '워크 직위 관리')}"></th:block>
+                    </a>
+                </li>
+                <li>
+                    <a id="member-info-btn" th:href="@{/{domainKey}/manage/manage(domainKey=${domainKey})}"
+                       th:attr="aria-current=${activeMenu == 'manage' ? 'page' : null}">
+                        <th:block th:replace="~{layout/sidebarUi :: label('👥', '팀원 정보 조회')}"></th:block>
+                    </a>
+                </li>
+                <li th:if="${manageWorkspaceRole >= 50}">
+                    <a th:href="@{/{domainKey}/manage/invitation(domainKey=${domainKey})}"
+                       th:attr="aria-current=${activeMenu == 'invitation' ? 'page' : null}">
+                        <th:block th:replace="~{layout/sidebarUi :: label('✉️', '팀원 초대하기')}"></th:block>
+                    </a>
+                </li>
+            </ul>
+        </details>
+        <details class="tw-nav-group" open>
+            <summary th:replace="~{layout/sidebarUi :: heading('📁', '프로젝트 관리')}"></summary>
+            <ul class="tw-nav-items">
+                <li>
+                    <a th:href="@{/{domainKey}/manage/view(domainKey=${domainKey})}"
+                       th:attr="aria-current=${activeMenu == 'view' or activeMenu == 'projectView' ? 'page' : null}">
+                        <th:block th:replace="~{layout/sidebarUi :: label('📁', '프로젝트 조회')}"></th:block>
+                    </a>
+                </li>
+                <li>
+                    <a th:href="@{/{domainKey}/manage/projectMembers(domainKey=${domainKey})}"
+                       th:attr="aria-current=${activeMenu == 'projectMembers' ? 'page' : null}">
+                        <th:block th:replace="~{layout/sidebarUi :: label('👥', '프로젝트 인원관리')}"></th:block>
+                    </a>
+                </li>
+                <li>
+                    <a th:href="@{/{domainKey}/manage/approval(domainKey=${domainKey})}"
+                       th:attr="aria-current=${activeMenu == 'approval' ? 'page' : null}">
+                        <th:block th:replace="~{layout/sidebarUi :: label('✅', '보고서 결재')}"></th:block>
+                    </a>
+                </li>
+                <li>
+                    <a th:href="@{/{domainKey}/manage/meetings(domainKey=${domainKey})}"
+                       th:attr="aria-current=${activeMenu == 'meetings' ? 'page' : null}">
+                        <th:block th:replace="~{layout/sidebarUi :: label('📝', '회의록')}"></th:block>
+                    </a>
+                </li>
+            </ul>
+        </details>
+        <details class="tw-nav-group" open>
+            <summary th:replace="~{layout/sidebarUi :: heading('🗓️', '캘린더')}"></summary>
+            <ul class="tw-nav-items">
+                <li>
+                    <a th:href="@{/{domainKey}/manage/calender(domainKey=${domainKey})}"
+                       th:attr="aria-current=${activeMenu == 'calender' ? 'page' : null}">
+                        <th:block th:replace="~{layout/sidebarUi :: label('🗓️', '프로젝트 캘린더')}"></th:block>
+                    </a>
+                </li>
+            </ul>
+        </details>
+        <details class="tw-nav-group" open>
+            <summary th:replace="~{layout/sidebarUi :: heading('📢', '공지사항')}"></summary>
+            <ul class="tw-nav-items">
+                <li>
+                    <a th:href="@{/{domainKey}/manage/noticeList(domainKey=${domainKey})}"
+                       th:attr="aria-current=${activeMenu == 'noticeList' ? 'page' : null}">
+                        <th:block th:replace="~{layout/sidebarUi :: label('📢', '공지사항 조회')}"></th:block>
+                    </a>
+                </li>
+            </ul>
+        </details>
+        <a th:replace="~{layout/sidebarUi :: back}"></a>
+    </div>
+</nav>
+</body>
+</html>

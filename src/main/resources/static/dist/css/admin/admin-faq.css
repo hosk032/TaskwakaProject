@@ -1,0 +1,264 @@
+@charset "UTF-8";
+
+.faq-list-actions {
+	display: flex;
+	justify-content: flex-end;
+	margin: 15px 0;
+}
+
+.faq-search-form {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin: 20px 0;
+	flex-wrap: wrap;
+}
+
+.faq-search-form select, .faq-search-form input {
+	height: 40px;
+	padding: 0 12px;
+	border: 1px solid #ded6cb;
+	border-radius: 8px;
+	background: white;
+	box-sizing: border-box;
+	font-size: 14px;
+}
+
+.faq-search-form select {
+	min-width: 165px;
+}
+
+.faq-search-form input {
+	flex: 1;
+	min-width: 180px;
+}
+
+.faq-search-btn {
+	height: 40px;
+	padding: 0 20px;
+	background: #637254;
+	color: white;
+	border: none;
+	border-radius: 8px;
+	cursor: pointer;
+}
+
+.faq-reset-btn {
+	height: 40px;
+	padding: 0 15px;
+	line-height: 40px;
+	color: #665b4d;
+	background: #f5f1eb;
+	border: 1px solid #ddd5ca;
+	border-radius: 8px;
+	text-decoration: none;
+	box-sizing: border-box;
+}
+
+.faq-count {
+	margin: 12px 0;
+	color: #777;
+	font-size: 13px;
+}
+
+.faq-table {
+	width: 100%;
+	table-layout: fixed;
+}
+
+.faq-table th, .faq-table td {
+	padding: 14px 10px;
+	vertical-align: middle;
+	text-align: center;
+}
+
+.faq-preview {
+	display: block;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	text-align: left;
+}
+
+.faq-category-text {
+	display: block;
+	margin-top: 6px;
+	font-size: 12px;
+	color: #94877a;
+	text-align: left;
+}
+
+.faq-manage-cell {
+	white-space: nowrap;
+}
+
+.faq-manage-cell a, .faq-manage-cell button {
+	display: inline-block;
+	margin: 2px;
+}
+
+.faq-pagination {
+	display: flex;
+	justify-content: center;
+	gap: 6px;
+	margin: 25px 0 5px;
+}
+
+.faq-pagination a, .faq-pagination span {
+	min-width: 34px;
+	padding: 8px 10px;
+	text-align: center;
+	border: 1px solid #ded6cb;
+	border-radius: 7px;
+	color: #625949;
+	text-decoration: none;
+	background: #fff;
+	box-sizing: border-box;
+}
+
+.faq-pagination .active {
+	background: #637254;
+	border-color: #637254;
+	color: white;
+}
+
+.faq-pagination .disabled {
+	color: #bbb;
+	background: #f8f8f8;
+}
+
+.faq-empty {
+	padding: 35px 10px !important;
+	color: #888;
+	text-align: center;
+}
+
+.faq-question-input {
+    display: block;
+    width: 100%;
+    min-height: 65px;
+    padding: 12px 15px;
+    box-sizing: border-box;
+    border: 1px solid #d9d2c8;
+    border-radius: 8px;
+    font-size: 14px;
+    resize: none;
+}
+
+/* FAQ 제목과 등록 버튼 한 줄 배치 */
+.faq-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.faq-header .panel-card-title {
+    margin: 0;
+}
+
+.faq-header .faq-list-actions {
+    margin: 0;
+}
+
+/* FAQ 질문과 답변 길이 제한 */
+.faq-preview {
+    display: block;
+    max-width: 350px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.faq-preview.faq-detail-link {
+    cursor: pointer;
+}
+
+.faq-preview.faq-detail-link:hover {
+    color: #5d7352;
+    text-decoration: underline;
+}
+
+/* FAQ 상세보기 모달 배경 */
+.faq-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    padding: 20px;
+}
+
+/* 모달 창 */
+.faq-modal-box {
+    background: #fff;
+    width: 100%;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+}
+
+/* 제목 영역 */
+.faq-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #eee;
+}
+
+.faq-modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.faq-modal-header button {
+    border: none;
+    background: none;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+/* 질문과 답변 */
+.faq-modal-body {
+    padding: 20px 0;
+}
+
+.faq-modal-body h4 {
+    margin: 16px 0 8px;
+    font-size: 14px;
+    color: #777;
+}
+
+.faq-modal-body p {
+    margin: 0;
+    line-height: 1.7;
+    color: #43392f;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+/* 닫기 버튼 */
+.faq-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 16px;
+    border-top: 1px solid #eee;
+}
+
+/* FAQ 번호 아래 구분선 */
+.faq-modal-number {
+    padding-bottom: 16px;
+    border-bottom: 1px solid #eee8e2;
+}
+
+/* 질문과 답변 사이 구분선 */
+.faq-modal-section:has(.faq-modal-question) {
+    padding-bottom: 20px;
+    border-bottom: 1px solid #eee8e2;
+}
