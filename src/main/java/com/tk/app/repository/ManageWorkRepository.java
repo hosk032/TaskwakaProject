@@ -45,7 +45,7 @@ public interface ManageWorkRepository extends JpaRepository<ManageWorkspaceMembe
         FROM ManageWorkspaceMember wm
         LEFT JOIN ManageMemberDetail md ON md.memberId = wm.memberId
         WHERE wm.workspaceId = :workspaceId AND wm.status = 0 AND (LOWER(COALESCE(md.name, ' ')) LIKE :kwd OR LOWER(COALESCE(md.email, ' ')) LIKE :kwd)
-        ORDER BY CASE WHEN wm.role = 70 THEN 0 ELSE 1 END, md.name ASC, wm.workspaceMemberId ASC
+        ORDER BY wm.role DESC, md.name ASC, wm.workspaceMemberId ASC
         """)
     List<ManageWorkDto> listWorkMember(
         @Param("workspaceId") Long workspaceId,
